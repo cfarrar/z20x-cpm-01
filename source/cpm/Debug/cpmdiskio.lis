@@ -1,0 +1,55 @@
+    1 C	//----------------------------------------------------------------------------
+    2 C	// Copyright (c) 2019, by Christopher D. Farrar
+    3 C	//----------------------------------------------------------------------------
+    4 C	// I here grant permission to any and all to copy and use this software for
+    5 C	// any purpose as long as my copyright message is retained.
+    6 C	//----------------------------------------------------------------------------
+    7  	#include <defines.h>
+    8 C	//----------------------------------------------------------------------------
+    9  	#include "cpmdiskio.h"
+   10  	#include "cpmregisters.h"
+   11  	#include "disks.h"
+   12 C	//----------------------------------------------------------------------------
+   13  	void cpmSelectDisk( void )
+   14  	{
+   15  	    hlregister = (UINT24) selectDisk( (UINT8) ( ( deregister & 0x0001 ) != 0 ), (UINT8) bcregister );
+   16  	}
+   17 C	//----------------------------------------------------------------------------
+   18  	void cpmHomeHead( void )
+   19  	{
+   20  	    homeHead();
+   21  	}
+   22 C	//----------------------------------------------------------------------------
+   23  	void cpmSetTrack( void )
+   24  	{
+   25  	    setTrack( (UINT16) bcregister );
+   26  	}
+   27 C	//----------------------------------------------------------------------------
+   28  	void cpmSetSector( void )
+   29  	{
+   30  	    setSector( (UINT16) bcregister );
+   31  	}
+   32 C	//----------------------------------------------------------------------------
+   33  	void cpmSetDma( void )
+   34  	{
+   35  	    UINT24 dma = mbregister & 0xFF;
+   36  	    dma <<= 16;
+   37  	    dma += ( bcregister & 0xFFFF );
+   38  	    setDma( (unsigned char *) dma );
+   39  	}
+   40 C	//----------------------------------------------------------------------------
+   41  	void cpmReadSector( void )
+   42  	{
+   43  	    afregister = (UINT24) readSector() << 8;
+   44  	}
+   45 C	//----------------------------------------------------------------------------
+   46  	void cpmWriteSector( void )
+   47  	{
+   48  	    afregister = (UINT24) writeSector( (UINT8) bcregister ) << 8;
+   49  	}
+   50 C	//----------------------------------------------------------------------------
+   51  	void cpmTranslateSector( void )
+   52  	{
+   53  	    hlregister = (UINT24) translateSector( (UINT16) bcregister );
+   54  	}
+   55 C	//----------------------------------------------------------------------------

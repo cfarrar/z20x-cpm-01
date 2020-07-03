@@ -1,0 +1,89 @@
+    1 C	//------------------------------------------------------------------------
+    2 C	// Copyright (c) 2019, Christopher D. Farrar
+    3 C	//------------------------------------------------------------------------
+    4 C	// I here grant permission to any and all to copy and use this software for
+    5 C	// any purpose as long as my copyright message is retained.
+    6 C	//----------------------------------------------------------------------------
+    7  	#include <defines.h>
+    8  	#include <ez80.h>
+    9  	#include <string.h>
+   10 C	//------------------------------------------------------------------------
+   11  	#include "cpmload.h"
+   12  	#include "cpmregisters.h"
+   13  	#include "disks.h"
+   14  	#include "isrwrap.h"
+   15  	#include "middle.h"
+   16 C	//------------------------------------------------------------------------
+   17 C	// Following allows emulation of a cp/m system ram that is smaller
+   18 C	// than 64k although why?  The alignment however, must always be 64k
+   19 C	// That is why two seperate constants are used.
+   20 C	//------------------------------------------------------------------------
+   21  	UINT8 cpmRam[CPM_RAM_SIZE] _Align( CPM_RAM_ALIGNMENT );
+MacExp: UINT8 cpmRam[( 65536 )] _Align( ( 65536 ) );
+   22 C	//------------------------------------------------------------------------
+   23  	void cpmLoadCcpBdos( void )
+   24  	{
+   25  	    memcpy(
+   26  	       &cpmRam[CCP]
+MacExp:        &cpmRam[( ( ( 62 ) - 7 ) * 1024 )]
+   27  	      , (char *) CCP
+MacExp:       , (char *) ( ( ( 62 ) - 7 ) * 1024 )
+   28  	      , BIOS - CCP );
+MacExp:       , ( ( ( ( 62 ) - 7 ) * 1024 ) + 0x1600 ) - ( ( ( 62 ) - 7 ) * 1024 ) );
+   29  	}
+   30 C	//------------------------------------------------------------------------
+   31  	void loadCcpBdosBios( void )
+   32  	{
+   33  	    memcpy(
+   34  	       &cpmRam[CCP]
+MacExp:        &cpmRam[( ( ( 62 ) - 7 ) * 1024 )]
+   35  	      , (char *) CCP
+MacExp:       , (char *) ( ( ( 62 ) - 7 ) * 1024 )
+   36  	      , 0x10000 - CCP );
+MacExp:       , 0x10000 - ( ( ( 62 ) - 7 ) * 1024 ) );
+   37  	}
+   38 C	//------------------------------------------------------------------------
+   39  	void loadEntryAndStart( void )
+   40  	{
+   41 C	    // make real entities to copy
+   42  	    static UINT24 biosEntry = (UINT24) adl_biosEntry;
+   43  	    static UINT16 start = BIOS;
+MacExp:     static UINT16 start = ( ( ( ( 62 ) - 7 ) * 1024 ) + 0x1600 );
+   44  	
+   45 C	    // address of middle ware bios services
+   46  	    memcpy(
+   47  	        &cpmRam[0x0000]
+   48  	      , &biosEntry
+   49  	      , sizeof biosEntry );
+   50  	
+   51 C	    // jump instruction
+   52  	    cpmRam[0x0100] = 0xC3;
+   53  	
+   54 C	    // bios cold boot entry point
+   55  	    memcpy(
+   56  	        &cpmRam[0x0101]
+   57  	      , &start
+   58  	      , sizeof start );
+   59  	}
+   60 C	//------------------------------------------------------------------------
+   61  	void startCpm( void )
+   62  	{
+   63  	    initCpmDiskio();
+   64  	
+   65  	    loadCcpBdosBios();
+   66  	    loadEntryAndStart();
+   67  	
+   68 C	    /* Wrap UART ISRs */
+   69  	    di();
+MacExp:     asm( "\tdi" );
+   70  	    _set_vector( UART0_IVECT, isruart0 );
+MacExp:     _set_vector( 0x18, isruart0 );
+   71  	    _set_vector( UART1_IVECT, isruart1 );
+MacExp:     _set_vector( 0x1A, isruart1 );
+   72  	
+   73 C	    /* Enable interrupts and enter CP/M in mixed mode */
+   74  	    mbregister = ( (UINT24) cpmRam ) >> 16;
+   75  	    adl_startCpm();
+   76  	}
+   77 C	//------------------------------------------------------------------------
+   78 C	

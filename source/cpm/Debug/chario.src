@@ -1,0 +1,499 @@
+; Zilog eZ80 ANSI C Compiler Release 3.4
+; -nomodsect -optspeed -noreduceopt -nopadbranch -debug
+; -peephole -globalopt -localcse -const=ROM 
+	FILE	"..\chario.c"
+	.assume ADL=1
+.DEBUG "C"
+	SEGMENT CODE
+.BEGREC "NONAME0",4
+.DEFINE "dr"
+.VALUE 0
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "ddr"
+.VALUE 1
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "alt1"
+.VALUE 2
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "alt2"
+.VALUE 3
+.CLASS 8
+.TYPE 12
+.ENDEF
+.ENDREC "NONAME0"
+.BEGREC "NONAME1",10
+.DEFINE "uartMode"
+.VALUE 0
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "baudRate"
+.VALUE 1
+.CLASS 8
+.TYPE 4
+.ENDEF
+.DEFINE "dataBits"
+.VALUE 4
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "stopBits"
+.VALUE 5
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "parity"
+.VALUE 6
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "fifoTriggerLevel"
+.VALUE 7
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "hwFlowControl"
+.VALUE 8
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "swFlowControl"
+.VALUE 9
+.CLASS 8
+.TYPE 12
+.ENDEF
+.ENDREC "NONAME1"
+.BEGREC "NONAME2",9
+.DEFINE "pBuffer"
+.VALUE 0
+.CLASS 8
+.TYPE 44
+.ENDEF
+.DEFINE "next_in"
+.VALUE 3
+.CLASS 8
+.TYPE 13
+.ENDEF
+.DEFINE "next_out"
+.VALUE 5
+.CLASS 8
+.TYPE 13
+.ENDEF
+.DEFINE "size"
+.VALUE 7
+.CLASS 8
+.TYPE 13
+.ENDEF
+.ENDREC "NONAME2"
+;    1	//------------------------------------------------------------------------
+;    2	// Copyright (c) 2018, Christopher D. Farrar
+;    3	//------------------------------------------------------------------------
+;    4	// I here grant permission to any and all to copy and use this software for
+;    5	// any purpose as long as my copyright message is retained.
+;    6	//----------------------------------------------------------------------------
+;    7	#include <z20x.h>
+;    8	//----------------------------------------------------------------------------
+;    9	#include <ez80.h>
+;   10	#include <defines.h>
+;   11	#include <uart.h>
+;   12	//------------------------------------------------------------------------
+;   13	#include <uart.h>
+;   14	//------------------------------------------------------------------------
+;   15	#include "chario.h"
+;   16	//------------------------------------------------------------------------
+;   17	//This function should not of been static
+;   18	//------------------------------------------------------------------------
+;   19	extern UCHAR FifoEmpty( FIFO *f );
+;   20	extern UCHAR g_mode_UART0;
+;   21	extern FIFO g_RxFIFO_UART0;
+;   22	//------------------------------------------------------------------------
+;   23	static UCHAR kbhit_UART0( VOID )
+;   24	{
+_kbhit_UART0:
+.DEFINE "_kbhit_UART0"
+
+.VALUE _kbhit_UART0
+
+.CLASS 3
+
+.TYPE 76
+
+.ENDEF
+
+.BEGFUNC "kbhit_UART0",24,"_kbhit_UART0"
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;   25	    if( INTERRUPT == g_mode_UART0 )                                 //! The interrupt mode to be used.
+.LINE 25
+
+	LD	A,(_g_mode_UART0)
+	CP	A,%1
+	JR	NZ,L_3
+;   26	    {
+;   27	        if( FifoEmpty( &g_RxFIFO_UART0 ) )                          //! FIFO is empty.
+.LINE 27
+
+	LD	BC,_g_RxFIFO_UART0
+	PUSH	BC
+	CALL	_FifoEmpty
+	POP	BC
+	OR	A,A
+	JR	Z,L_1
+;   28	        {
+;   29	            UART0_SPR = UART_ERR_RECEIVEFIFOEMPTY ;                 //! Update SPR register.
+.LINE 29
+
+	LD	A,%F
+	OUT0	(199),A
+;   30	
+;   31	            return 0 ;
+.LINE 31
+
+	XOR	A,A
+	JR	L_4
+;   32	
+;   33	        }
+;   34	        else                                                        //! A keyboard stroke detected!
+L_1:
+.LINE 34
+
+;   35	        {
+;   36	            return 1 ;
+.LINE 36
+
+	LD	A,%1
+	JR	L_4
+;   37	        }
+;   38	    }
+;   39	    else                                                            //! The polling mode to be used.
+L_3:
+.LINE 39
+
+;   40	    {
+;   41	        return ( TRUE == (UART0_LSR & UART_LSR_DATA_READY) ) ;      //! Find it reading line status register.
+.LINE 41
+
+	IN0	A,(197)
+	AND	A,%1
+	UEXT	HL
+	LD	L,A
+	LD	BC,1
+	OR	A,A
+	SBC	HL,BC
+	JR	NZ,L__3
+	LD	A,%1
+	JR	L__4
+L__3:
+	XOR	A,A
+L__4:
+;   42	    }
+;   43	}
+L_4:
+.LINE 43
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _kbhit_UART0 ***************************
+;Name                         Addr/Register   Size   Type
+;_g_RxFIFO_UART0                     IMPORT      9   variable
+;_FifoEmpty                          IMPORT  -----   function
+;_g_mode_UART0                       IMPORT      1   variable
+
+
+; Stack Frame Size: 6 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "kbhit_UART0",43,"_kbhit_UART0"
+;   44	//------------------------------------------------------------------------
+;   45	UINT8 consoleCharInReady( void )
+;   46	{
+_consoleCharInReady:
+.DEFINE "_consoleCharInReady"
+
+.VALUE _consoleCharInReady
+
+.CLASS 2
+
+.TYPE 76
+
+.ENDEF
+
+.BEGFUNC "consoleCharInReady",46,"_consoleCharInReady"
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+;   47	    return ( kbhit_UART0() ) ? 0xFF : 0x00;
+.LINE 47
+
+	CALL	_kbhit_UART0
+	OR	A,A
+	JR	Z,L_7
+	LD	BC,255
+	LD	(IX+%FFFFFFFD),BC
+	JR	L_8
+L_7:
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+L_8:
+	LD	A,(IX+%FFFFFFFD)
+;   48	}
+.LINE 48
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _consoleCharInReady ***************************
+;Name                         Addr/Register   Size   Type
+;temp5                                 IX-3      3   variable
+
+
+; Stack Frame Size: 9 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "consoleCharInReady",48,"_consoleCharInReady"
+;   49	//------------------------------------------------------------------------
+;   50	char consoleCharIn( void )
+;   51	{
+_consoleCharIn:
+.DEFINE "_consoleCharIn"
+
+.VALUE _consoleCharIn
+
+.CLASS 2
+
+.TYPE 66
+
+.ENDEF
+
+.BEGFUNC "consoleCharIn",51,"_consoleCharIn"
+
+.LINE 51
+
+.DEFINE "c"
+
+.CLASS 65
+
+.VALUE -1
+
+.TYPE 2
+
+.ENDEF
+
+.DEFINE "n"
+
+.CLASS 65
+
+.VALUE -4
+
+.TYPE 14
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	DEC	SP
+;   52	    char c;
+;   53	    unsigned n = 1;
+.LINE 53
+
+	LD	BC,1
+	LD	(IX+%FFFFFFFC),BC
+;   54	    do
+L_10:
+.LINE 54
+
+;   55	    {
+;   56	        read_UART0( &c, &n );
+.LINE 56
+
+	PEA	IX+%FFFFFFFC
+	PEA	IX+%FFFFFFFF
+	CALL	_read_UART0
+	POP	BC
+	POP	BC
+;   57	    }
+;   58	    while ( 0 == n );
+.LINE 58
+
+	LD	BC,0
+	LD	HL,(IX+%FFFFFFFC)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_10
+;   59	    return c;
+.LINE 59
+
+	LD	A,(IX+%FFFFFFFF)
+;   60	}
+.LINE 60
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _consoleCharIn ***************************
+;Name                         Addr/Register   Size   Type
+;_read_UART0                         IMPORT  -----   function
+;n                                     IX-4      3   variable
+;c                                     IX-1      1   variable
+
+
+; Stack Frame Size: 10 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "consoleCharIn",60,"_consoleCharIn"
+;   61	//------------------------------------------------------------------------
+;   62	UINT8 consoleCharOutReady( void )
+;   63	{
+_consoleCharOutReady:
+.DEFINE "_consoleCharOutReady"
+
+.VALUE _consoleCharOutReady
+
+.CLASS 2
+
+.TYPE 76
+
+.ENDEF
+
+.BEGFUNC "consoleCharOutReady",63,"_consoleCharOutReady"
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;   64	    return 0xFF;
+.LINE 64
+
+	LD	A,%FF
+;   65	}
+.LINE 65
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _consoleCharOutReady ***************************
+;Name                         Addr/Register   Size   Type
+
+
+; Stack Frame Size: 6 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "consoleCharOutReady",65,"_consoleCharOutReady"
+;   66	//------------------------------------------------------------------------
+;   67	void consoleCharOut( char c )
+;   68	{
+_consoleCharOut:
+.DEFINE "_consoleCharOut"
+
+.VALUE _consoleCharOut
+
+.CLASS 2
+
+.TYPE 65
+
+.ENDEF
+
+.BEGFUNC "consoleCharOut",68,"_consoleCharOut"
+
+.LINE 68
+
+.DEFINE "c"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 2
+
+.ENDEF
+
+.DEFINE "result"
+
+.CLASS 65
+
+.VALUE -1
+
+.TYPE 12
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	DEC	SP
+.ENDEF
+
+;   69	    UCHAR result;
+;   70	    do
+L_15:
+.LINE 70
+
+;   71	    {
+;   72	        result = write_UART0( &c, 1 );
+.LINE 72
+
+	LD	BC,1
+	PUSH	BC
+	PEA	IX+%6
+	CALL	_write_UART0
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFF),A
+;   73	    }
+;   74	    while ( result != UART_ERR_NONE );
+.LINE 74
+
+	OR	A,A
+	JR	NZ,L_15
+;   75	}
+.LINE 75
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _consoleCharOut ***************************
+;Name                         Addr/Register   Size   Type
+;_write_UART0                        IMPORT  -----   function
+;result                                IX-1      1   variable
+;c                                     IX+6      1   parameter
+
+
+; Stack Frame Size: 10 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "consoleCharOut",75,"_consoleCharOut"
+	XREF _g_RxFIFO_UART0:ROM
+	XREF _g_mode_UART0:ROM
+	XREF _FifoEmpty:ROM
+	XREF _read_UART0:ROM
+	XREF _write_UART0:ROM
+	XDEF _consoleCharOut
+	XDEF _consoleCharOutReady
+	XDEF _consoleCharIn
+	XDEF _consoleCharInReady
+	END

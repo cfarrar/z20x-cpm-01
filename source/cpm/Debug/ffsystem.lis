@@ -1,0 +1,173 @@
+    1 C	/*------------------------------------------------------------------------*/
+    2 C	/* Sample Code of OS Dependent Functions for FatFs                        */
+    3 C	/* (C)ChaN, 2017                                                          */
+    4 C	/*------------------------------------------------------------------------*/
+    5 C	
+    6 C	
+    7  	#include "ff.h"
+    8  	
+    9  	
+   10  	
+   11  	#if FF_USE_LFN == 3	/* Dynamic memory allocation */
+MacExp: #if 1 == 3	/* Dynamic memory allocation */
+   12 X	
+   13 X	/*------------------------------------------------------------------------*/
+   14 X	/* Allocate a memory block                                                */
+   15 X	/*------------------------------------------------------------------------*/
+   16 X	
+   17 X	void* ff_memalloc (	/* Returns pointer to the allocated memory block (null on not enough core) */
+   18 X		UINT msize		/* Number of bytes to allocate */
+   19 X	)
+   20 X	{
+   21 X		return malloc(msize);	/* Allocate a new memory block with POSIX API */
+   22 X	}
+   23 X	
+   24 X	
+   25 X	/*------------------------------------------------------------------------*/
+   26 X	/* Free a memory block                                                    */
+   27 X	/*------------------------------------------------------------------------*/
+   28 X	
+   29 X	void ff_memfree (
+   30 X		void* mblock	/* Pointer to the memory block to free (nothing to do for null) */
+   31 X	)
+   32 X	{
+   33 X		free(mblock);	/* Free the memory block with POSIX API */
+   34 X	}
+   35 X	
+   36  	#endif
+   37  	
+   38  	
+   39  	
+   40  	#if FF_FS_REENTRANT	/* Mutal exclusion */
+MacExp: #if 0	/* Mutal exclusion */
+   41 X	
+   42 X	/*------------------------------------------------------------------------*/
+   43 X	/* Create a Synchronization Object                                        */
+   44 X	/*------------------------------------------------------------------------*/
+   45 X	/* This function is called in f_mount() function to create a new
+   46 X	/  synchronization object for the volume, such as semaphore and mutex.
+   47 X	/  When a 0 is returned, the f_mount() function fails with FR_INT_ERR.
+   48 X	*/
+   49 X	
+   50 X	//const osMutexDef_t Mutex[FF_VOLUMES];	/* CMSIS-RTOS */
+   51 X	
+   52 X	
+   53 X	int ff_cre_syncobj (	/* 1:Function succeeded, 0:Could not create the sync object */
+   54 X		BYTE vol,			/* Corresponding volume (logical drive number) */
+   55 X		FF_SYNC_t* sobj		/* Pointer to return the created sync object */
+   56 X	)
+   57 X	{
+   58 X		/* Win32 */
+   59 X		*sobj = CreateMutex(NULL, FALSE, NULL);
+   60 X		return (int)(*sobj != INVALID_HANDLE_VALUE);
+   61 X	
+   62 X		/* uITRON */
+   63 X	//	T_CSEM csem = {TA_TPRI,1,1};
+   64 X	//	*sobj = acre_sem(&csem);
+   65 X	//	return (int)(*sobj > 0);
+   66 X	
+   67 X		/* uC/OS-II */
+   68 X	//	OS_ERR err;
+   69 X	//	*sobj = OSMutexCreate(0, &err);
+   70 X	//	return (int)(err == OS_NO_ERR);
+   71 X	
+   72 X		/* FreeRTOS */
+   73 X	//	*sobj = xSemaphoreCreateMutex();
+   74 X	//	return (int)(*sobj != NULL);
+   75 X	
+   76 X		/* CMSIS-RTOS */
+   77 X	//	*sobj = osMutexCreate(Mutex + vol);
+   78 X	//	return (int)(*sobj != NULL);
+   79 X	}
+   80 X	
+   81 X	
+   82 X	/*------------------------------------------------------------------------*/
+   83 X	/* Delete a Synchronization Object                                        */
+   84 X	/*------------------------------------------------------------------------*/
+   85 X	/* This function is called in f_mount() function to delete a synchronization
+   86 X	/  object that created with ff_cre_syncobj() function. When a 0 is returned,
+   87 X	/  the f_mount() function fails with FR_INT_ERR.
+   88 X	*/
+   89 X	
+   90 X	int ff_del_syncobj (	/* 1:Function succeeded, 0:Could not delete due to an error */
+   91 X		FF_SYNC_t sobj		/* Sync object tied to the logical drive to be deleted */
+   92 X	)
+   93 X	{
+   94 X		/* Win32 */
+   95 X		return (int)CloseHandle(sobj);
+   96 X	
+   97 X		/* uITRON */
+   98 X	//	return (int)(del_sem(sobj) == E_OK);
+   99 X	
+  100 X		/* uC/OS-II */
+  101 X	//	OS_ERR err;
+  102 X	//	OSMutexDel(sobj, OS_DEL_ALWAYS, &err);
+  103 X	//	return (int)(err == OS_NO_ERR);
+  104 X	
+  105 X		/* FreeRTOS */
+  106 X	//  vSemaphoreDelete(sobj);
+  107 X	//	return 1;
+  108 X	
+  109 X		/* CMSIS-RTOS */
+  110 X	//	return (int)(osMutexDelete(sobj) == osOK);
+  111 X	}
+  112 X	
+  113 X	
+  114 X	/*------------------------------------------------------------------------*/
+  115 X	/* Request Grant to Access the Volume                                     */
+  116 X	/*------------------------------------------------------------------------*/
+  117 X	/* This function is called on entering file functions to lock the volume.
+  118 X	/  When a 0 is returned, the file function fails with FR_TIMEOUT.
+  119 X	*/
+  120 X	
+  121 X	int ff_req_grant (	/* 1:Got a grant to access the volume, 0:Could not get a grant */
+  122 X		FF_SYNC_t sobj	/* Sync object to wait */
+  123 X	)
+  124 X	{
+  125 X		/* Win32 */
+  126 X		return (int)(WaitForSingleObject(sobj, FF_FS_TIMEOUT) == WAIT_OBJECT_0);
+  127 X	
+  128 X		/* uITRON */
+  129 X	//	return (int)(wai_sem(sobj) == E_OK);
+  130 X	
+  131 X		/* uC/OS-II */
+  132 X	//	OS_ERR err;
+  133 X	//	OSMutexPend(sobj, FF_FS_TIMEOUT, &err));
+  134 X	//	return (int)(err == OS_NO_ERR);
+  135 X	
+  136 X		/* FreeRTOS */
+  137 X	//	return (int)(xSemaphoreTake(sobj, FF_FS_TIMEOUT) == pdTRUE);
+  138 X	
+  139 X		/* CMSIS-RTOS */
+  140 X	//	return (int)(osMutexWait(sobj, FF_FS_TIMEOUT) == osOK);
+  141 X	}
+  142 X	
+  143 X	
+  144 X	/*------------------------------------------------------------------------*/
+  145 X	/* Release Grant to Access the Volume                                     */
+  146 X	/*------------------------------------------------------------------------*/
+  147 X	/* This function is called on leaving file functions to unlock the volume.
+  148 X	*/
+  149 X	
+  150 X	void ff_rel_grant (
+  151 X		FF_SYNC_t sobj	/* Sync object to be signaled */
+  152 X	)
+  153 X	{
+  154 X		/* Win32 */
+  155 X		ReleaseMutex(sobj);
+  156 X	
+  157 X		/* uITRON */
+  158 X	//	sig_sem(sobj);
+  159 X	
+  160 X		/* uC/OS-II */
+  161 X	//	OSMutexPost(sobj);
+  162 X	
+  163 X		/* FreeRTOS */
+  164 X	//	xSemaphoreGive(sobj);
+  165 X	
+  166 X		/* CMSIS-RTOS */
+  167 X	//	osMutexRelease(sobj);
+  168 X	}
+  169 X	
+  170  	#endif
+  171  	

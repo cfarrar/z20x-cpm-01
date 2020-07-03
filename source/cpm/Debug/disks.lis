@@ -1,0 +1,183 @@
+    1 C	//----------------------------------------------------------------------------
+    2 C	// Copyright (c) 2019, by Christopher D. Farrar
+    3 C	//----------------------------------------------------------------------------
+    4 C	// I here grant permission to any and all to copy and use this software for
+    5 C	// any purpose as long as my copyright message is retained.
+    6 C	//----------------------------------------------------------------------------
+    7  	#include <ctype.h>
+    8  	#include <defines.h>
+    9  	#include <string.h>
+   10 C	//----------------------------------------------------------------------------
+   11  	#include "diskio.h"
+   12 C	//----------------------------------------------------------------------------
+   13  	#include "cpmdiskio.h"
+   14  	#include "cpmtable.h"
+   15  	#include "disks.h"
+   16  	#include "sdparams.h"
+   17  	#include "sdcard.h"
+   18 C	//----------------------------------------------------------------------------
+   19  	#include <stdio.h>
+   20 C	//----------------------------------------------------------------------------
+   21  	static UINT8          disk_;
+   22  	static UINT16         track_;
+   23  	static UINT16         sector_;
+   24  	static unsigned char *dma_;
+   25 C	//------------------------------------------------------------------------
+   26  	static UINT8 sectorMask_ = 0;
+   27  	static UINT32 currentLba_ = 0xFFFFFFFF;
+   28  	static BYTE sectorBuffer_[SD_PHYSICAL_SECTOR_SIZE];
+MacExp: static BYTE sectorBuffer_[(512)];
+   29 C	//----------------------------------------------------------------------------
+   30  	#define WRITE_TYPE_CAN_DEFER_WRITE ( 0 )
+   31  	#define WRITE_TYPE_IMMEDIATE_WRITE ( 1 )
+   32  	#define WRITE_TYPE_NO_PREREAD      ( 2 )
+   33 C	//----------------------------------------------------------------------------
+   34  	#define READ_RESULT_SUCCESS        ( 0 )
+   35  	#define READ_RESULT_FAILURE        ( 1 )
+   36  	#define READ_RESULT_MEDIA_CHANGE   ( 0xFF )
+   37 C	//----------------------------------------------------------------------------
+   38  	#define WRITE_RESULT_SUCCESS       ( 0 )
+   39  	#define WRITE_RESULT_FAILURE       ( 1 )
+   40  	#define WRITE_RESULT_READ_ONLY     ( 2 )
+   41  	#define WRITE_RESULT_MEDIA_CHANGE  ( 0xFF )
+   42 C	//----------------------------------------------------------------------------
+   43  	#if ( SD_TRACKS_PER_DISK != 65 )
+MacExp: #if ( (65) != 65 )
+   44 X	#error update the code for tracks per disk
+   45  	#endif
+   46  	#if ( SD_SECTORS_PER_TRACK != 1024 )
+MacExp: #if ( (1024) != 1024 )
+   47 X	#error update the code for sectors per track
+   48  	#endif
+   49  	#if ( SD_LOGICAL_PER_PHYSICAL != 4 )
+MacExp: #if ( ((512)/(128)) != 4 )
+   50 X	#error update the code for logical sectors per physical
+   51  	#endif
+   52 C	//----------------------------------------------------------------------------
+   53  	UINT16 selectDisk( UINT8 newLog, UINT8 disk )
+   54  	{
+   55  	    UINT16 r;
+   56  	
+   57  	    r = getDphP( disk );
+   58  	
+   59  	    if ( !r ) {
+   60  	        return 0;
+   61  	    }
+   62  	
+   63  	    disk_ = disk;
+   64  	    return r;
+   65  	}
+   66 C	//----------------------------------------------------------------------------
+   67  	void homeHead( void )
+   68  	{
+   69  	    track_ = 0;
+   70  	}
+   71 C	//----------------------------------------------------------------------------
+   72  	void setTrack( UINT16 track )
+   73  	{
+   74  	    track_ = track;
+   75  	}
+   76 C	//----------------------------------------------------------------------------
+   77  	void setSector( UINT16 sector )
+   78  	{
+   79  	    sector_ = sector;
+   80  	}
+   81 C	//----------------------------------------------------------------------------
+   82  	void setDma( unsigned char *dma )
+   83  	{
+   84  	    dma_ = dma;
+   85  	}
+   86 C	//----------------------------------------------------------------------------
+   87  	static UINT32 calculateLba(
+   88  	    unsigned disk
+   89  	  , unsigned track
+   90  	  , unsigned sector )
+   91  	{
+   92  	    UINT32 lba;
+   93  	    lba  = ( disk << 6 ) + disk; // * 65
+   94  	    lba += track;
+   95  	    lba <<= 10;  // * 1024
+   96  	    lba += sector;
+   97  	    lba >>= SD_SECTOR_SHIFT;
+MacExp:     lba >>= (2);
+   98  	    return lba;
+   99  	}
+  100 C	//----------------------------------------------------------------------------
+  101  	UINT8 readSector( void )
+  102  	{
+  103  	    unsigned offset;
+  104  	    UINT32 lba = calculateLba( disk_, track_, sector_ );
+  105  	    if ( currentLba_ != lba )
+  106  	    {
+  107  	        if ( sectorMask_ != 0 )
+  108  	        {
+  109  	            write_sdcard( sectorBuffer_, currentLba_ );
+  110  	            sectorMask_ = 0;
+  111  	        }
+  112  	        read_sdcard( sectorBuffer_, lba, 1U );
+  113  	        currentLba_ = lba;
+  114  	    }
+  115  	    offset = ( sector_ & SD_SECTOR_MASK ) << 7;
+MacExp:     offset = ( sector_ & (3) ) << 7;
+  116  	    memcpy( dma_, &sectorBuffer_[offset], 128 );
+  117  	    return READ_RESULT_SUCCESS;
+MacExp:     return ( 0 );
+  118  	}
+  119 C	//----------------------------------------------------------------------------
+  120  	UINT8 const indexToBit[SD_LOGICAL_PER_PHYSICAL] = { 1, 2, 4, 8 };
+MacExp: UINT8 const indexToBit[((512)/(128))] = { 1, 2, 4, 8 };
+  121 C	//----------------------------------------------------------------------------
+  122  	UINT8 writeSector( UINT8 writeType )
+  123  	{
+  124  	    UINT8 index;
+  125  	    unsigned offset;
+  126  	    UINT32 lba = calculateLba( disk_, track_, sector_ );
+  127  	    if ( currentLba_ != lba )
+  128  	    {
+  129  	        if ( sectorMask_ != 0 )
+  130  	        {
+  131  	            write_sdcard( sectorBuffer_, currentLba_ );
+  132  	            sectorMask_ = 0;
+  133  	        }
+  134  	        read_sdcard( sectorBuffer_, lba, 1U );
+  135  	        currentLba_ = lba;
+  136  	    }
+  137  	    index = ( sector_ & SD_SECTOR_MASK );
+MacExp:     index = ( sector_ & (3) );
+  138  	    offset = ( (unsigned) index ) << 7;
+  139  	    memcpy( &sectorBuffer_[offset], dma_, 128 );
+  140  	    sectorMask_ |= indexToBit[index];
+  141  	    if ( sectorMask_ == 15 ) // all logical sectors written
+  142  	    {
+  143  	        write_sdcard( sectorBuffer_, lba );
+  144  	        sectorMask_ = 0;
+  145  	    }
+  146  	    return WRITE_RESULT_SUCCESS;
+MacExp:     return ( 0 );
+  147  	}
+  148 C	//----------------------------------------------------------------------------
+  149  	UINT16 translateSector( UINT16 logical )
+  150  	{
+  151  	    return logical;
+  152  	}
+  153 C	//----------------------------------------------------------------------------
+  154  	void initCpmDiskio( void )
+  155  	{
+  156  	    init_sdcard();
+  157  	}
+  158 C	//----------------------------------------------------------------------------
+  159 C	
+  160 C	
+  161 C	
+  162 C	
+  163 C	
+  164 C	
+  165 C	
+  166 C	
+  167 C	
+  168 C	
+  169 C	
+  170 C	
+  171 C	
+  172 C	
+  173 C	

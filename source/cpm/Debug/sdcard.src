@@ -1,0 +1,2700 @@
+; Zilog eZ80 ANSI C Compiler Release 3.4
+; -nomodsect -optspeed -noreduceopt -nopadbranch -debug
+; -peephole -globalopt -localcse -const=ROM 
+	FILE	"..\..\z20x\sdcard.c"
+	.assume ADL=1
+.DEBUG "C"
+	SEGMENT CODE
+.BEGREC "NONAME0",4
+.DEFINE "dr"
+.VALUE 0
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "ddr"
+.VALUE 1
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "alt1"
+.VALUE 2
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "alt2"
+.VALUE 3
+.CLASS 8
+.TYPE 12
+.ENDEF
+.ENDREC "NONAME0"
+.BEGREC "NONAME1",10
+.DEFINE "uartMode"
+.VALUE 0
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "baudRate"
+.VALUE 1
+.CLASS 8
+.TYPE 4
+.ENDEF
+.DEFINE "dataBits"
+.VALUE 4
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "stopBits"
+.VALUE 5
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "parity"
+.VALUE 6
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "fifoTriggerLevel"
+.VALUE 7
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "hwFlowControl"
+.VALUE 8
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "swFlowControl"
+.VALUE 9
+.CLASS 8
+.TYPE 12
+.ENDEF
+.ENDREC "NONAME1"
+.BEGREC "NONAME2",9
+.DEFINE "pBuffer"
+.VALUE 0
+.CLASS 8
+.TYPE 44
+.ENDEF
+.DEFINE "next_in"
+.VALUE 3
+.CLASS 8
+.TYPE 13
+.ENDEF
+.DEFINE "next_out"
+.VALUE 5
+.CLASS 8
+.TYPE 13
+.ENDEF
+.DEFINE "size"
+.VALUE 7
+.CLASS 8
+.TYPE 13
+.ENDEF
+.ENDREC "NONAME2"
+.BEGREC "fmt_type",19
+.DEFINE "status"
+.VALUE 0
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "flags"
+.VALUE 1
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "size"
+.VALUE 2
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "chr"
+.VALUE 3
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "type"
+.VALUE 4
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "field_width"
+.VALUE 5
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "precision"
+.VALUE 6
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "set_begin"
+.VALUE 7
+.CLASS 8
+.TYPE 34
+.ENDEF
+.DEFINE "set_end"
+.VALUE 10
+.CLASS 8
+.TYPE 34
+.ENDEF
+.DEFINE "pad_whole"
+.VALUE 13
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "pad_pre_fract"
+.VALUE 14
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "pad_post_fract"
+.VALUE 15
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "pad_at"
+.VALUE 16
+.CLASS 8
+.TYPE 34
+.ENDEF
+.ENDREC "fmt_type"
+.BEGREC "flt_info",12
+.DEFINE "flags"
+.VALUE 0
+.CLASS 8
+.TYPE 12
+.ENDEF
+.DEFINE "exp"
+.VALUE 1
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "digits"
+.VALUE 2
+.CLASS 8
+.DIM 10
+.TYPE 108
+.ENDEF
+.ENDREC "flt_info"
+;    1	/* this file based on mlmhw.c of makerlisp project */
+;    2	#include <defines.h>
+;    3	#include <ez80.h>
+;    4	#include <stdio.h>
+;    5	#include <stddef.h>
+;    6	#include <string.h>
+;    7	
+;    8	#include "sdcard.h"
+;    9	
+;   10	/* Delays, SPI and SD card retry constants */
+;   11	#define WAIT4RESET 4000
+;   12	#define WAIT4CARD 4000
+;   13	#define SDRETRY 2000
+;   14	#define SPIRETRY 1000
+;   15	
+;   16	#define SD_CS 4
+;   17	#define TP_CS 1
+;   18	#define SPI_MOSI 7
+;   19	#define SPI_MISO 6
+;   20	#define SPI_CLK 3
+;   21	
+;   22	
+;   23	
+;   24	
+;   25	/* Clear, set bits in registers */
+;   26	#define BIT( n ) ( 1 << n )
+;   27	#define CLEAR_BIT(reg, n) reg &= ~(1 << n)
+;   28	#define SET_BIT(reg, n) reg |= (1 << n)
+;   29	
+;   30	/* Reads and writes are SPI full duplex exchanges */
+;   31	#define read_spi() _xchg_spi(0xFF)
+;   32	#define write_spi(d) _xchg_spi(d)
+;   33	
+;   34	/* Select and de-select card with GPIO pin */
+;   35	#define select()  PB_DR &= ~BIT( SD_CS )
+;   36	#define unselect() PB_DR |= BIT( SD_CS )
+;   37	#define deselect() unselect(); read_spi()
+;   38	
+;   39	/* SD card commands */
+;   40	typedef struct sdcmd {
+;   41	    char num;
+;   42	    UINT32 arg;
+;   43	    char crc;
+;   44	} SDCMD;
+.BEGREC "sdcmd",6
+.DEFINE "num"
+.VALUE 0
+.CLASS 8
+.TYPE 2
+.ENDEF
+.DEFINE "arg"
+.VALUE 1
+.CLASS 8
+.TYPE 15
+.ENDEF
+.DEFINE "crc"
+.VALUE 5
+.CLASS 8
+.TYPE 2
+.ENDEF
+.ENDREC "sdcmd"
+	SEGMENT DATA
+_cmd0:
+	DB	64
+	DL	0
+	DB	149
+.DEFINE "cmd0"
+.ALIAS "_cmd0"
+.CLASS 69
+.VALUE _cmd0
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd8:
+	DB	72
+	DL	426
+	DB	135
+.DEFINE "cmd8"
+.ALIAS "_cmd8"
+.CLASS 69
+.VALUE _cmd8
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd12:
+	DB	76
+	DL	0
+	DB	135
+.DEFINE "cmd12"
+.ALIAS "_cmd12"
+.CLASS 69
+.VALUE _cmd12
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd17:
+	DB	81
+	DL	0
+	DB	0
+.DEFINE "cmd17"
+.ALIAS "_cmd17"
+.CLASS 69
+.VALUE _cmd17
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd18:
+	DB	82
+	DL	0
+	DB	0
+.DEFINE "cmd18"
+.ALIAS "_cmd18"
+.CLASS 69
+.VALUE _cmd18
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd24:
+	DB	88
+	DL	0
+	DB	0
+.DEFINE "cmd24"
+.ALIAS "_cmd24"
+.CLASS 69
+.VALUE _cmd24
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd41:
+	DB	105
+	DL	1073741824
+	DB	119
+.DEFINE "cmd41"
+.ALIAS "_cmd41"
+.CLASS 69
+.VALUE _cmd41
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd55:
+	DB	119
+	DL	0
+	DB	101
+.DEFINE "cmd55"
+.ALIAS "_cmd55"
+.CLASS 69
+.VALUE _cmd55
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd58:
+	DB	122
+	DL	0
+	DB	0
+.DEFINE "cmd58"
+.ALIAS "_cmd58"
+.CLASS 69
+.VALUE _cmd58
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+_cmd59:
+	DB	123
+	DL	0
+	DB	145
+.DEFINE "cmd59"
+.ALIAS "_cmd59"
+.CLASS 69
+.VALUE _cmd59
+.TAG "sdcmd"
+.TYPE 8
+.ENDEF
+	SEGMENT BSS
+_datetime:
+	DS	7
+.DEFINE "datetime"
+.ALIAS "_datetime"
+.CLASS 83
+.VALUE _datetime
+.DIM 7
+.TYPE 108
+.ENDEF
+_ebhere:
+	DS	1
+.DEFINE "ebhere"
+.ALIAS "_ebhere"
+.CLASS 83
+.VALUE _ebhere
+.TYPE 2
+.ENDEF
+;   45	static SDCMD cmd0 = { 0x40, 0, 0x95 };
+;   46	static SDCMD cmd8 = { 0x48, 0x1AA, 0x87 };
+;   47	static SDCMD cmd12 = { 0x4c, 0, 0x87 };
+;   48	static SDCMD cmd17 = { 0x51, 0, 0 };
+;   49	static SDCMD cmd18 = { 0x52, 0, 0 };
+;   50	static SDCMD cmd24 = { 0x58, 0, 0 };
+;   51	static SDCMD cmd41 = { 0x69, 0x40000000, 0x77 };
+;   52	static SDCMD cmd55 = { 0x77, 0, 0x65 };
+;   53	static SDCMD cmd58 = { 0x7a, 0, 0 };
+;   54	static SDCMD cmd59 = { 0x7b, 0, 0x91 };
+;   55	
+;   56	/* RTC date and time array */
+;   57	static unsigned char datetime[7];
+;   58	
+;   59	/* Expansion board detected */
+;   60	static char ebhere;
+	SEGMENT CODE
+;   61	
+;   62	/* Reset system devices */
+;   63	void init_hw()
+;   64	{
+_init_hw:
+.DEFINE "_init_hw"
+
+.VALUE _init_hw
+
+.CLASS 2
+
+.TYPE 65
+
+.ENDEF
+
+.BEGFUNC "init_hw",64,"_init_hw"
+
+.LINE 64
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -4
+
+.TYPE 5
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	DEC	SP
+;   65	    long i;
+;   66	
+;   67	    /* turn on backlight port C bit 2 */
+;   68	    PC_DR |= BIT( 2 );
+.LINE 68
+
+	IN0	A,(158)
+	SET	%2,A
+	OUT0	(158),A
+;   69	    PC_ALT1 &= ~BIT( 2 );
+.LINE 69
+
+	IN0	A,(160)
+	RES	%2,A
+	OUT0	(160),A
+;   70	    PC_ALT2 &= ~BIT( 2 );
+.LINE 70
+
+	IN0	A,(161)
+	RES	%2,A
+	OUT0	(161),A
+;   71	    PC_DDR &= ~BIT( 2 );
+.LINE 71
+
+	IN0	A,(159)
+	RES	%2,A
+	OUT0	(159),A
+;   72	
+;   73	    /* SS must remain high for spi to work properly */
+;   74	    PB_DR |= BIT( 2 );
+.LINE 74
+
+	IN0	A,(154)
+	SET	%2,A
+	OUT0	(154),A
+;   75	    PB_ALT1 &= ~BIT( 2 );
+.LINE 75
+
+	IN0	A,(156)
+	RES	%2,A
+	OUT0	(156),A
+;   76	    PB_ALT2 &= ~BIT( 2 );
+.LINE 76
+
+	IN0	A,(157)
+	RES	%2,A
+	OUT0	(157),A
+;   77	    PB_DDR &= ~BIT( 2 );
+.LINE 77
+
+	IN0	A,(155)
+	RES	%2,A
+	OUT0	(155),A
+;   78	
+;   79	    // Enable the chip select outputs and de-select
+;   80	    PB_DR |= ( BIT( SD_CS ) | BIT( TP_CS ) );
+.LINE 80
+
+	IN0	A,(154)
+	OR	A,%12
+	OUT0	(154),A
+;   81	    PB_ALT1 &= ~( BIT( SD_CS ) | BIT( TP_CS ) );
+.LINE 81
+
+	IN0	A,(156)
+	AND	A,%ED
+	OUT0	(156),A
+;   82	    PB_ALT2 &= ~( BIT( SD_CS ) | BIT( TP_CS ) );
+.LINE 82
+
+	IN0	A,(157)
+	AND	A,%ED
+	OUT0	(157),A
+;   83	    PB_DDR &= ~( BIT( SD_CS ) | BIT( TP_CS ) );
+.LINE 83
+
+	IN0	A,(155)
+	AND	A,%ED
+	OUT0	(155),A
+;   84	
+;   85	    /* Set port B pins 7 (MOSI), 6 (MISO), 3 (SCK), 2 (/SS) to SPI */
+;   86	    PB_ALT1 &= ~( BIT( SPI_MOSI ) | BIT( SPI_MISO ) | BIT( SPI_CLK ) );
+.LINE 86
+
+	IN0	A,(156)
+	AND	A,%37
+	OUT0	(156),A
+;   87	    PB_ALT2 |= ( BIT( SPI_MOSI ) | BIT( SPI_MISO ) | BIT( SPI_CLK ) );
+.LINE 87
+
+	IN0	A,(157)
+	OR	A,%C8
+	OUT0	(157),A
+;   88	
+;   89	    i = 0;
+.LINE 89
+
+	LD	BC,0
+	XOR	A,A
+	LD	(IX+%FFFFFFFC),BC
+	LD	(IX+%FFFFFFFF),A
+;   90	    while (i < WAIT4RESET) {
+.LINE 90
+
+	JR	L_0
+L_1:
+;   91	        ++i;
+.LINE 91
+
+	LD	HL,(IX+%FFFFFFFC)
+	LD	E,(IX+%FFFFFFFF)
+	LD	A,%1
+	CALL	__ladd_b
+	LD	(IX+%FFFFFFFC),HL
+	LD	(IX+%FFFFFFFF),E
+;   92	    }
+L_0:
+.LINE 92
+
+	LD	HL,(IX+%FFFFFFFC)
+	LD	E,(IX+%FFFFFFFF)
+	LD	BC,4000
+	XOR	A,A
+	CALL	__lcmps
+	JP	M,L__1
+	JP	PE,L_1
+	JR	L__2
+L__1:
+	JP	PO,L_1
+L__2:
+;   93	
+;   94	}
+.LINE 94
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _init_hw ***************************
+;Name                         Addr/Register   Size   Type
+;i                                     IX-4      4   variable
+
+
+; Stack Frame Size: 10 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "init_hw",94,"_init_hw"
+;   95	
+;   96	void mode_spi( d )
+;   97	{
+_mode_spi:
+.DEFINE "_mode_spi"
+
+.VALUE _mode_spi
+
+.CLASS 2
+
+.TYPE 65
+
+.ENDEF
+
+.BEGFUNC "mode_spi",97,"_mode_spi"
+
+.LINE 97
+
+.DEFINE "d"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;   98	    SPI_CTL = 0;
+.LINE 98
+
+	XOR	A,A
+	OUT0	(186),A
+;   99	    SPI_BRG_H = d / 256;
+.LINE 99
+
+	LD	BC,256
+	LD	HL,(IX+%6)
+	CALL	__idivs
+	LD	A,L
+	OUT0	(185),A
+;  100	    SPI_BRG_L = d % 256;
+.LINE 100
+
+	LD	BC,256
+	LD	HL,(IX+%6)
+	CALL	__irems
+	LD	A,L
+	OUT0	(184),A
+;  101	    SPI_CTL = 0x30;
+.LINE 101
+
+	LD	A,%30
+	OUT0	(186),A
+;  102	}
+.LINE 102
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _mode_spi ***************************
+;Name                         Addr/Register   Size   Type
+;d                                     IX+6      3   parameter
+
+
+; Stack Frame Size: 9 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "mode_spi",102,"_mode_spi"
+;  103	
+;  104	/* SPI exchange transfer */
+;  105	char _xchg_spi(char d)
+;  106	{
+__xchg_spi:
+.DEFINE "__xchg_spi"
+
+.VALUE __xchg_spi
+
+.CLASS 2
+
+.TYPE 66
+
+.ENDEF
+
+.BEGFUNC "_xchg_spi",106,"__xchg_spi"
+
+.LINE 106
+
+.DEFINE "d"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 2
+
+.ENDEF
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -3
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "delay"
+
+.CLASS 65
+
+.VALUE -6
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	PUSH	BC
+;  107	    int i;
+;  108	    volatile int delay;
+;  109	
+;  110	    /* Write the data to exchange */
+;  111	    SPI_TSR = d;
+.LINE 111
+
+	LD	A,(IX+%6)
+	OUT0	(188),A
+;  112	
+;  113	    /* Wait for slave data to arrive */
+;  114	    i = 0;
+.LINE 114
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  115	    while (i < SPIRETRY) {
+.LINE 115
+
+	JR	L_6
+L_7:
+;  116	        if (SPI_SR & (1 << 7)) {
+.LINE 116
+
+	IN0	A,(187)
+	AND	A,%80
+	JR	NZ,L_8
+;  117	            break;
+;  118	        }
+;  119	        ++i;
+.LINE 119
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  120	    }
+L_6:
+.LINE 120
+
+	LD	BC,1000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L_7
+L_8:
+;  121	
+;  122	    /* Delay, then read data */
+;  123	    delay = 0;
+.LINE 123
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFA),BC
+;  124	    while (delay < 1) {
+.LINE 124
+
+	JR	L_9
+L_10:
+;  125	        ++delay;
+.LINE 125
+
+	LD	BC,(IX+%FFFFFFFA)
+	INC	BC
+	LD	(IX+%FFFFFFFA),BC
+;  126	    }
+L_9:
+.LINE 126
+
+	LD	BC,1
+	LD	HL,(IX+%FFFFFFFA)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L__8
+	JP	PE,L_10
+	JR	L__9
+L__8:
+	JP	PO,L_10
+L__9:
+;  127	
+;  128	    return SPI_RBR;
+.LINE 128
+
+	IN0	A,(188)
+;  129	}
+.LINE 129
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** __xchg_spi ***************************
+;Name                         Addr/Register   Size   Type
+;delay                                 IX-6      3   variable
+;i                                     IX-3      3   variable
+;d                                     IX+6      1   parameter
+
+
+; Stack Frame Size: 15 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "_xchg_spi",129,"__xchg_spi"
+;  130	
+;  131	/* Send a command to the SD card and get response, move data */
+;  132	static int cmd_sdcard(SDCMD *cmd, BYTE *buf, int tok, int dlen, int ddir)
+;  133	{
+_cmd_sdcard:
+.DEFINE "_cmd_sdcard"
+
+.VALUE _cmd_sdcard
+
+.CLASS 3
+
+.TYPE 68
+
+.ENDEF
+
+.BEGFUNC "cmd_sdcard",133,"_cmd_sdcard"
+
+.LINE 133
+
+.DEFINE "cmd"
+
+.CLASS 65
+
+.VALUE 6
+
+.TAG "sdcmd"
+
+.TYPE 40
+
+.ENDEF
+
+.DEFINE "buf"
+
+.CLASS 65
+
+.VALUE 9
+
+.TYPE 44
+
+.ENDEF
+
+.DEFINE "tok"
+
+.CLASS 65
+
+.VALUE 12
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "dlen"
+
+.CLASS 65
+
+.VALUE 15
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "ddir"
+
+.CLASS 65
+
+.VALUE 18
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -3
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "r"
+
+.CLASS 65
+
+.VALUE -4
+
+.TYPE 2
+
+.ENDEF
+
+.DEFINE "d"
+
+.CLASS 65
+
+.VALUE -5
+
+.TYPE 2
+
+.ENDEF
+
+.DEFINE "l"
+
+.CLASS 65
+
+.VALUE -14
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	LEA	HL,IX+%FFFFFFF2
+	LD	SP,HL
+;  134	    char d, r;
+;  135	    int i, l;
+;  136	
+;  137	    //printf( "\r\n>00<%04X>", cmd->num );
+;  138	    /* Starting a command ? */
+;  139	    r = 0xFF;
+.LINE 139
+
+	LD	(IX+%FFFFFFFC),%FF
+;  140	    if (cmd) {
+.LINE 140
+
+	LD	BC,0
+	LD	HL,(IX+%6)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_38
+;  141	
+;  142	        /* Select card, wait for ready */
+;  143	        select();
+.LINE 143
+
+	IN0	A,(154)
+	RES	%4,A
+	OUT0	(154),A
+;  144	        i = 0;
+.LINE 144
+
+	LD	(IX+%FFFFFFFD),BC
+;  145	        while (i < SDRETRY) {
+.LINE 145
+
+	JR	L_15
+L_16:
+;  146	            d = read_spi();
+.LINE 146
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+	LD	(IX+%FFFFFFFB),A
+;  147	            if (d == (char)0xFF) {
+.LINE 147
+
+	CP	A,%FF
+	JR	Z,L_18
+;  148	                break;
+;  149	            }
+;  150	            ++i;
+.LINE 150
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  151	        }
+L_15:
+.LINE 151
+
+	LD	BC,2000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	P,L__39
+	JP	PE,L__14
+	JR	L__40
+L__39:
+	JP	PO,L__14
+L__40:
+	LD	A,%1
+	JR	L__15
+L__14:
+	XOR	A,A
+L__15:
+	LD	(IX+%FFFFFFFA),A
+	OR	A,A
+	JR	NZ,L_16
+L_18:
+;  152	        if (!(i < SDRETRY)) {
+.LINE 152
+
+	LD	A,(IX+%FFFFFFFA)
+	OR	A,A
+	JR	NZ,L_19
+;  153	            deselect();
+.LINE 153
+
+	IN0	A,(154)
+	SET	%4,A
+	OUT0	(154),A
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  154	            return -1;
+.LINE 154
+
+	LD	HL,16777215
+	JR	L_57
+;  155	        }
+L_19:
+.LINE 155
+
+;  156	
+;  157	        /* Write command */
+;  158	        write_spi(cmd->num);
+.LINE 158
+
+	LD	IY,(IX+%6)
+	LD	C,(IY+%0)
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  159	        write_spi(cmd->arg >> 24);
+.LINE 159
+
+	LD	IY,(IX+%6)
+	LD	A,(IY+%4)
+	UEXT	HL
+	LD	L,A
+	LD	BC,HL
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  160	        write_spi(cmd->arg >> 16);
+.LINE 160
+
+	UEXT	HL
+	PUSH	HL
+	LD	IY,(IX+%6)
+	LD	BC,(IY+%2)
+	PUSH	BC
+	INC	SP
+	POP	BC
+	INC	SP
+	INC	SP
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  161	        write_spi(cmd->arg >> 8);
+.LINE 161
+
+	LD	IY,(IX+%6)
+	LD	BC,(IY+%2)
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  162	        write_spi(cmd->arg >> 0);
+.LINE 162
+
+	LD	IY,(IX+%6)
+	LD	BC,(IY+%1)
+	LD	A,(IY+%4)
+	LD	L,%0
+	CALL	__lshru
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  163	        write_spi(cmd->crc);
+.LINE 163
+
+	LD	IY,(IX+%6)
+	LD	C,(IY+%5)
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  164	
+;  165	        /* Wait for response */
+;  166	        if (cmd->num == cmd12.num) {
+.LINE 166
+
+	LD	A,(_cmd12)
+	LD	IY,(IX+%6)
+	CP	A,(IY+%0)
+	JR	NZ,L_21
+;  167	
+;  168	            /* CMD12 stuff byte */
+;  169	            read_spi();
+.LINE 169
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  170	        }
+L_21:
+.LINE 170
+
+;  171	        i = 0;
+.LINE 171
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  172	        while (i < SDRETRY) {
+.LINE 172
+
+	JR	L_24
+L_25:
+;  173	            r = read_spi();
+.LINE 173
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+	LD	(IX+%FFFFFFFC),A
+;  174	            if (!(r < 0)) {
+.LINE 174
+
+	OR	A,A
+	JP	P,L_27
+;  175	                break;
+;  176	            }
+;  177	            ++i;
+.LINE 177
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  178	        }
+L_24:
+.LINE 178
+
+	LD	BC,2000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	P,L__41
+	JP	PE,L__21
+	JR	L__42
+L__41:
+	JP	PO,L__21
+L__42:
+	LD	A,%1
+	JR	L__22
+L__21:
+	XOR	A,A
+L__22:
+	LD	(IX+%FFFFFFF9),A
+	OR	A,A
+	JR	NZ,L_25
+L_27:
+;  179	        if (!(i < SDRETRY)) {
+.LINE 179
+
+	LD	A,(IX+%FFFFFFF9)
+	OR	A,A
+	JR	NZ,L_38
+;  180	            deselect();
+.LINE 180
+
+	IN0	A,(154)
+	SET	%4,A
+	OUT0	(154),A
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  181	            //printf( "\r\n>07<-1>" );
+;  182	            return -1;
+.LINE 182
+
+	LD	HL,16777215
+	JR	L_57
+;  183	        }
+;  184	    }
+L_38:
+.LINE 184
+
+;  185	
+;  186	    /* Wait for or write data token */
+;  187	    if (!(tok < 0)) {
+.LINE 187
+
+	LD	BC,0
+	LD	HL,(IX+%C)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L_39
+;  188	        if (!ddir) {
+.LINE 188
+
+	LD	HL,(IX+%12)
+	OR	A,A
+	SBC	HL,BC
+	JR	NZ,L_36
+;  189	            i = 0;
+.LINE 189
+
+	LD	(IX+%FFFFFFFD),BC
+;  190	            while (i < SDRETRY) {
+.LINE 190
+
+	JR	L_31
+L_32:
+;  191	                r = read_spi();
+.LINE 191
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+	LD	(IX+%FFFFFFFC),A
+;  192	                if (r == (char)tok) {
+.LINE 192
+
+	LD	A,(IX+%C)
+	CP	A,(IX+%FFFFFFFC)
+	JR	Z,L_34
+;  193	                    break;
+;  194	                }
+;  195	                ++i;
+.LINE 195
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  196	            }
+L_31:
+.LINE 196
+
+	LD	BC,2000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	P,L__43
+	JP	PE,L__29
+	JR	L__44
+L__43:
+	JP	PO,L__29
+L__44:
+	LD	A,%1
+	JR	L__30
+L__29:
+	XOR	A,A
+L__30:
+	LD	(IX+%FFFFFFF8),A
+	OR	A,A
+	JR	NZ,L_32
+L_34:
+;  197	            if (!(i < SDRETRY)) {
+.LINE 197
+
+	LD	A,(IX+%FFFFFFF8)
+	OR	A,A
+	JR	NZ,L_39
+;  198	                deselect();
+.LINE 198
+
+	IN0	A,(154)
+	SET	%4,A
+	OUT0	(154),A
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  199	                //printf( "\r\n>10<-1>" );
+;  200	                return -1;
+.LINE 200
+
+	LD	HL,16777215
+	JR	L_57
+;  201	            }
+;  202	        } else {
+L_36:
+.LINE 202
+
+;  203	            read_spi();
+.LINE 203
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  204	            write_spi(tok);
+.LINE 204
+
+	LD	C,(IX+%C)
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  205	        }
+;  206	    }
+L_39:
+.LINE 206
+
+;  207	
+;  208	    /* Move response or data */
+;  209	    i = 0;
+.LINE 209
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  210	    l = (dlen < 0) ? -dlen : dlen;
+.LINE 210
+
+	LD	HL,(IX+%F)
+	OR	A,A
+	SBC	HL,BC
+	JP	P,L_42
+	LD	HL,(IX+%F)
+	CALL	__ineg
+	LD	(IX+%FFFFFFF5),HL
+	JR	L_43
+L_42:
+	LD	BC,(IX+%F)
+	LD	(IX+%FFFFFFF5),BC
+L_43:
+	LD	BC,(IX+%FFFFFFF5)
+	LD	(IX+%FFFFFFF2),BC
+;  211	    while (i < l) {
+.LINE 211
+
+	JR	L_47
+L_48:
+;  212	        if (!ddir) {
+.LINE 212
+
+	LD	BC,0
+	LD	HL,(IX+%12)
+	OR	A,A
+	SBC	HL,BC
+	JR	NZ,L_45
+;  213	            buf[i] = read_spi();
+.LINE 213
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+	LD	BC,(IX+%FFFFFFFD)
+	LD	HL,(IX+%9)
+	ADD	HL,BC
+	LD	(HL),A
+;  214	        } else {
+.LINE 214
+
+	JR	L_46
+L_45:
+;  215	            write_spi(buf[i]);
+.LINE 215
+
+	LD	BC,(IX+%FFFFFFFD)
+	LD	HL,(IX+%9)
+	ADD	HL,BC
+	LD	C,(HL)
+	LD	B,%0
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  216	        }
+L_46:
+.LINE 216
+
+;  217	        ++i;
+.LINE 217
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  218	    }
+L_47:
+.LINE 218
+
+	LD	BC,(IX+%FFFFFFF2)
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L__45
+	JP	PE,L_48
+	JR	L__46
+L__45:
+	JP	PO,L_48
+L__46:
+;  219	
+;  220	    /* Wait for not busy, then deselect, if this is the end */
+;  221	    if (!(dlen < 0)) {
+.LINE 221
+
+	LD	BC,0
+	LD	HL,(IX+%F)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L__47
+	JP	PE,L_56
+	JR	L__48
+L__47:
+	JP	PO,L_56
+L__48:
+;  222	        i = 0;
+.LINE 222
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  223	        while (i < SDRETRY) {
+.LINE 223
+
+	JR	L_51
+L_52:
+;  224	            d = read_spi();
+.LINE 224
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+	LD	(IX+%FFFFFFFB),A
+;  225	            if (d == (char)0xFF) {
+.LINE 225
+
+	CP	A,%FF
+	JR	Z,L_53
+;  226	                break;
+;  227	            }
+;  228	            ++i;
+.LINE 228
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  229	        }
+L_51:
+.LINE 229
+
+	LD	BC,2000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L__49
+	JP	PE,L_52
+	JR	L__50
+L__49:
+	JP	PO,L_52
+L__50:
+L_53:
+;  230	        deselect();
+.LINE 230
+
+	IN0	A,(154)
+	SET	%4,A
+	OUT0	(154),A
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  231	    }
+L_56:
+.LINE 231
+
+;  232	    //printf( "\r\n>15<%04X>", r );
+;  233	
+;  234	    return (unsigned char)r;
+.LINE 234
+
+	LD	A,(IX+%FFFFFFFC)
+	UEXT	HL
+	LD	L,A
+;  235	}
+L_57:
+.LINE 235
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _cmd_sdcard ***************************
+;Name                         Addr/Register   Size   Type
+;_cmd12                              STATIC      6   variable
+;__xchg_spi                          IMPORT  -----   function
+;l                                    IX-14      3   variable
+;temp40                               IX-11      3   variable
+;G_2                                   IX-8      1   variable
+;G_1                                   IX-7      1   variable
+;G_0                                   IX-6      1   variable
+;d                                     IX-5      1   variable
+;r                                     IX-4      1   variable
+;i                                     IX-3      3   variable
+;ddir                                 IX+18      3   parameter
+;dlen                                 IX+15      3   parameter
+;tok                                  IX+12      3   parameter
+;buf                                   IX+9      3   parameter
+;cmd                                   IX+6      3   parameter
+
+
+; Stack Frame Size: 35 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "cmd_sdcard",235,"_cmd_sdcard"
+;  236	
+;  237	/* Set up SD card for reads and writes - expect SD v2, HC */
+;  238	int init_sdcard()
+;  239	{
+_init_sdcard:
+.DEFINE "_init_sdcard"
+
+.VALUE _init_sdcard
+
+.CLASS 2
+
+.TYPE 68
+
+.ENDEF
+
+.BEGFUNC "init_sdcard",239,"_init_sdcard"
+
+.LINE 239
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -3
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "response"
+
+.CLASS 65
+
+.VALUE -8
+
+.DIM 4
+
+.TYPE 108
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	PUSH	BC
+	DEC	SP
+	DEC	SP
+;  240	    BYTE response[4];
+;  241	    int i;
+;  242	
+;  243	    /* Set SPI in master mode, "mode 0" transfers, 200 kHz */
+;  244	    mode_spi( 50 );
+.LINE 244
+
+	LD	BC,50
+	PUSH	BC
+	CALL	_mode_spi
+	POP	BC
+;  245	
+;  246	    /* Write 80 clock pulses with /CS and DI (MOSI) high */
+;  247	    deselect();
+.LINE 247
+
+	IN0	A,(154)
+	SET	%4,A
+	OUT0	(154),A
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  248	    i = 0;
+.LINE 248
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  249	    while (i < 10) {
+.LINE 249
+
+	JR	L_58
+L_59:
+;  250	        write_spi(0xFF);
+.LINE 250
+
+	LD	BC,16777215
+	PUSH	BC
+	CALL	__xchg_spi
+	POP	BC
+;  251	        ++i;
+.LINE 251
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  252	    }
+L_58:
+.LINE 252
+
+	LD	BC,10
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	M,L__64
+	JP	PE,L_59
+	JR	L__65
+L__64:
+	JP	PO,L_59
+L__65:
+;  253	
+;  254	    /* Reset, put card in "SPI" mode */
+;  255	    if (cmd_sdcard(&cmd0, NULL, -1, 0, 0) != 0x01) {
+.LINE 255
+
+	LD	BC,0
+	PUSH	BC
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	BC,1
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_63
+;  256	        return 1;
+.LINE 256
+
+	LD	HL,1
+	JR	L_78
+;  257	    }
+L_63:
+.LINE 257
+
+;  258	    /* Check voltage range, SDC version 2 */
+;  259	    if (cmd_sdcard(&cmd8, response, -1, 4, 0) != 0x01) {
+.LINE 259
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,4
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFF8
+	LD	BC,_cmd8
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	BC,1
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_65
+;  260	        return 1;
+.LINE 260
+
+	LD	HL,1
+	JR	L_78
+;  261	    }
+L_65:
+.LINE 261
+
+;  262	
+;  263	    /* Turn off CRC checking */
+;  264	    if (cmd_sdcard(&cmd59, NULL, -1, 0, 0) != 0x01) {
+.LINE 264
+
+	LD	BC,0
+	PUSH	BC
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd59
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	BC,1
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_66
+;  265	        return 1;
+.LINE 265
+
+	LD	HL,1
+	JR	L_78
+;  266	    }
+L_66:
+.LINE 266
+
+;  267	
+;  268	    /* Initialize */
+;  269	    i = 0;
+.LINE 269
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+;  270	    while (i < SDRETRY) {
+.LINE 270
+
+	JR	L_69
+L_70:
+;  271	        cmd_sdcard(&cmd55, NULL, -1, 0, 0);
+.LINE 271
+
+	LD	BC,0
+	PUSH	BC
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd55
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+;  272	        if (cmd_sdcard(&cmd41, NULL, -1, 0, 0) == 0x00) {
+.LINE 272
+
+	LD	BC,0
+	PUSH	BC
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd41
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	BC,0
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_72
+;  273	            break;
+;  274	        }
+;  275	        ++i;
+.LINE 275
+
+	LD	BC,(IX+%FFFFFFFD)
+	INC	BC
+	LD	(IX+%FFFFFFFD),BC
+;  276	    }
+L_69:
+.LINE 276
+
+	LD	BC,2000
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JP	P,L__66
+	JP	PE,L__58
+	JR	L__67
+L__66:
+	JP	PO,L__58
+L__67:
+	LD	A,%1
+	JR	L__59
+L__58:
+	XOR	A,A
+L__59:
+	LD	(IX+%FFFFFFFC),A
+	OR	A,A
+	JR	NZ,L_70
+L_72:
+;  277	    if (!(i < SDRETRY)) {
+.LINE 277
+
+	LD	A,(IX+%FFFFFFFC)
+	OR	A,A
+	JR	NZ,L_74
+;  278	        return 1;
+.LINE 278
+
+	LD	HL,1
+	JR	L_78
+;  279	    }
+L_74:
+.LINE 279
+
+;  280	
+;  281	    /* Read OCR register, check for block addressing */
+;  282	    if (cmd_sdcard(&cmd58, response, -1, 4, 0) != 0x00) {
+.LINE 282
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,4
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFF8
+	LD	BC,_cmd58
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	BC,0
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_76
+;  283	        return 1;
+.LINE 283
+
+	LD	HL,1
+	JR	L_78
+;  284	    }
+L_76:
+.LINE 284
+
+;  285	    if (!(response[0] & 0x40)) {
+.LINE 285
+
+	LD	A,(IX+%FFFFFFF8)
+	AND	A,%40
+	JR	NZ,L_77
+;  286	        return 1;
+.LINE 286
+
+	LD	HL,1
+	JR	L_78
+;  287	    }
+L_77:
+.LINE 287
+
+;  288	
+;  289	    /* Set SPI data rate to 8.33 MHz */
+;  290	    mode_spi( 3 );
+.LINE 290
+
+	LD	BC,3
+	PUSH	BC
+	CALL	_mode_spi
+	POP	BC
+;  291	
+;  292	    return 0;
+.LINE 292
+
+	OR	A,A
+	SBC	HL,HL
+;  293	}
+L_78:
+.LINE 293
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _init_sdcard ***************************
+;Name                         Addr/Register   Size   Type
+;_cmd58                              STATIC      6   variable
+;_cmd41                              STATIC      6   variable
+;_cmd55                              STATIC      6   variable
+;_cmd59                              STATIC      6   variable
+;_cmd8                               STATIC      6   variable
+;_cmd0                               STATIC      6   variable
+;__xchg_spi                          IMPORT  -----   function
+;_mode_spi                           IMPORT  -----   function
+;response                              IX-8      4   variable
+;G_3                                   IX-4      1   variable
+;i                                     IX-3      3   variable
+
+
+; Stack Frame Size: 14 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "init_sdcard",293,"_init_sdcard"
+;  294	
+;  295	/* Read blocks */
+;  296	int read_sdcard(BYTE *buf, UINT32 n, UINT blks)
+;  297	{
+_read_sdcard:
+.DEFINE "_read_sdcard"
+
+.VALUE _read_sdcard
+
+.CLASS 2
+
+.TYPE 68
+
+.ENDEF
+
+.BEGFUNC "read_sdcard",297,"_read_sdcard"
+
+.LINE 297
+
+.DEFINE "buf"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 44
+
+.ENDEF
+
+.DEFINE "n"
+
+.CLASS 65
+
+.VALUE 9
+
+.TYPE 15
+
+.ENDEF
+
+.DEFINE "blks"
+
+.CLASS 65
+
+.VALUE 15
+
+.TYPE 14
+
+.ENDEF
+
+.DEFINE "r"
+
+.CLASS 65
+
+.VALUE -3
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -6
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "crc"
+
+.CLASS 65
+
+.VALUE -8
+
+.DIM 2
+
+.TYPE 108
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	PUSH	BC
+	DEC	SP
+	DEC	SP
+;  298	    BYTE crc[2];
+;  299	    int i, r;
+;  300	
+;  301	    if (blks == 1) {
+.LINE 301
+
+	LD	BC,1
+	LD	HL,(IX+%F)
+	OR	A,A
+	SBC	HL,BC
+	JR	NZ,L_88
+;  302	
+;  303	        /* Single block ? */
+;  304	        cmd17.arg = n;
+.LINE 304
+
+	LD	BC,(IX+%9)
+	LD	(_cmd17+1),BC
+	LD	A,(IX+%C)
+	LD	(_cmd17+4),A
+;  305	        r = cmd_sdcard(&cmd17, buf, 0xFE, -512, 0);
+.LINE 305
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,16776704
+	PUSH	BC
+	LD	BC,254
+	PUSH	BC
+	LD	BC,(IX+%6)
+	PUSH	BC
+	LD	BC,_cmd17
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFD),HL
+;  306	        if (!(r == 0xFE)) {
+.LINE 306
+
+	LD	BC,254
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_80
+;  307	            return 1;
+.LINE 307
+
+	LD	HL,1
+	JR	L_90
+;  308	        }
+L_80:
+.LINE 308
+
+;  309	        cmd_sdcard(NULL, crc, -1, sizeof(crc), 0);
+.LINE 309
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,2
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFF8
+	LD	BC,0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+;  310	    } else {
+.LINE 310
+
+	JR	L_89
+L_88:
+;  311	
+;  312	        /* Multiple blocks */
+;  313	        cmd18.arg = n;
+.LINE 313
+
+	LD	BC,(IX+%9)
+	LD	(_cmd18+1),BC
+	LD	A,(IX+%C)
+	LD	(_cmd18+4),A
+;  314	        r = cmd_sdcard(&cmd18, NULL, -1, -1, 0);
+.LINE 314
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd18
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFD),HL
+;  315	        i = 0;
+.LINE 315
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFA),BC
+;  316	        while (i < blks) {
+.LINE 316
+
+	JR	L_83
+L_84:
+;  317	            r = cmd_sdcard(NULL, buf + i*512, 0xFE, -512, 0);;
+.LINE 317
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,16776704
+	PUSH	BC
+	LD	BC,254
+	PUSH	BC
+	LD	HL,(IX+%FFFFFFFA)
+	LD	A,%9
+	CALL	__ishl_b
+	LD	BC,(IX+%6)
+	ADD	HL,BC
+	PUSH	HL
+	LD	BC,0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFD),HL
+;  318	            if (!(r == 0xFE)) {
+.LINE 318
+
+	LD	BC,254
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_82
+;  319	                return 1;
+.LINE 319
+
+	LD	HL,1
+	JR	L_90
+;  320	            }
+L_82:
+.LINE 320
+
+;  321	            cmd_sdcard(NULL, crc, -1, -sizeof(crc), 0);
+.LINE 321
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,16777214
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFF8
+	LD	BC,0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+;  322	            ++i;
+.LINE 322
+
+	LD	BC,(IX+%FFFFFFFA)
+	INC	BC
+	LD	(IX+%FFFFFFFA),BC
+;  323	        }
+L_83:
+.LINE 323
+
+	LD	BC,(IX+%F)
+	LD	HL,(IX+%FFFFFFFA)
+	OR	A,A
+	SBC	HL,BC
+	JR	C,L_84
+;  324	        r = cmd_sdcard(&cmd12, NULL, -1, 0, 0);
+.LINE 324
+
+	LD	BC,0
+	PUSH	BC
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	LD	BC,0
+	PUSH	BC
+	LD	BC,_cmd12
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFD),HL
+;  325	        if (r) {
+.LINE 325
+
+	LD	BC,0
+	LD	HL,(IX+%FFFFFFFD)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_89
+;  326	            return 1;
+.LINE 326
+
+	LD	HL,1
+	JR	L_90
+;  327	        }
+;  328	    }
+L_89:
+.LINE 328
+
+;  329	
+;  330	    return 0;
+.LINE 330
+
+	OR	A,A
+	SBC	HL,HL
+;  331	}
+L_90:
+.LINE 331
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _read_sdcard ***************************
+;Name                         Addr/Register   Size   Type
+;_cmd12                              STATIC      6   variable
+;_cmd18                              STATIC      6   variable
+;_cmd17                              STATIC      6   variable
+;crc                                   IX-8      2   variable
+;i                                     IX-6      3   variable
+;r                                     IX-3      3   variable
+;blks                                 IX+15      3   parameter
+;n                                     IX+9      4   parameter
+;buf                                   IX+6      3   parameter
+
+
+; Stack Frame Size: 26 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "read_sdcard",331,"_read_sdcard"
+;  332	
+;  333	/* Write a block */
+;  334	int write_sdcard(BYTE *buf, UINT32 n)
+;  335	{
+_write_sdcard:
+.DEFINE "_write_sdcard"
+
+.VALUE _write_sdcard
+
+.CLASS 2
+
+.TYPE 68
+
+.ENDEF
+
+.BEGFUNC "write_sdcard",335,"_write_sdcard"
+
+.LINE 335
+
+.DEFINE "buf"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 44
+
+.ENDEF
+
+.DEFINE "n"
+
+.CLASS 65
+
+.VALUE 9
+
+.TYPE 15
+
+.ENDEF
+
+.DEFINE "dr"
+
+.CLASS 65
+
+.VALUE -1
+
+.TYPE 12
+
+.ENDEF
+
+.DEFINE "crc"
+
+.CLASS 65
+
+.VALUE -3
+
+.DIM 2
+
+.TYPE 108
+
+.ENDEF
+
+.DEFINE "r"
+
+.CLASS 65
+
+.VALUE -6
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	PUSH	BC
+	PUSH	BC
+;  336	    BYTE dr, crc[2];
+;  337	    int i, r;
+;  338	
+;  339	    cmd24.arg = n;
+.LINE 339
+
+	LD	BC,(IX+%9)
+	LD	(_cmd24+1),BC
+	LD	A,(IX+%C)
+	LD	(_cmd24+4),A
+;  340	    r = cmd_sdcard(&cmd24, buf, 0xFE, -512, 1);
+.LINE 340
+
+	LD	BC,1
+	PUSH	BC
+	LD	BC,16776704
+	PUSH	BC
+	LD	BC,254
+	PUSH	BC
+	LD	BC,(IX+%6)
+	PUSH	BC
+	LD	BC,_cmd24
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	LD	(IX+%FFFFFFFA),HL
+;  341	    cmd_sdcard(NULL, crc, -1, -sizeof(crc), 1);
+.LINE 341
+
+	LD	BC,1
+	PUSH	BC
+	LD	BC,16777214
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFFD
+	LD	BC,0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+;  342	    cmd_sdcard(NULL, &dr, -1, 1, 0);
+.LINE 342
+
+	LD	BC,0
+	PUSH	BC
+	LD	BC,1
+	PUSH	BC
+	LD	BC,16777215
+	PUSH	BC
+	PEA	IX+%FFFFFFFF
+	LD	BC,0
+	PUSH	BC
+	CALL	_cmd_sdcard
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+	POP	BC
+;  343	
+;  344	    if (!(r == 0x00)) {
+.LINE 344
+
+	LD	BC,0
+	LD	HL,(IX+%FFFFFFFA)
+	OR	A,A
+	SBC	HL,BC
+	JR	Z,L_93
+;  345	        return 1;
+.LINE 345
+
+	LD	HL,1
+	JR	L_95
+;  346	    }
+L_93:
+.LINE 346
+
+;  347	    if (!((dr & 0x1F) == 0x05)) {
+.LINE 347
+
+	LD	A,(IX+%FFFFFFFF)
+	AND	A,%1F
+	CP	A,%5
+	JR	Z,L_94
+;  348	        return 1;
+.LINE 348
+
+	LD	HL,1
+	JR	L_95
+;  349	    }
+L_94:
+.LINE 349
+
+;  350	
+;  351	    return 0;
+.LINE 351
+
+	OR	A,A
+	SBC	HL,HL
+;  352	}
+L_95:
+.LINE 352
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _write_sdcard ***************************
+;Name                         Addr/Register   Size   Type
+;_cmd24                              STATIC      6   variable
+;r                                     IX-6      3   variable
+;crc                                   IX-3      2   variable
+;dr                                    IX-1      1   variable
+;n                                     IX+9      4   parameter
+;buf                                   IX+6      3   parameter
+
+
+; Stack Frame Size: 21 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "write_sdcard",352,"_write_sdcard"
+;  353	
+;  354	/* Read and write registers */
+;  355	int _readreg(int regaddr)
+;  356	{
+__readreg:
+.DEFINE "__readreg"
+
+.VALUE __readreg
+
+.CLASS 2
+
+.TYPE 68
+
+.ENDEF
+
+.BEGFUNC "_readreg",356,"__readreg"
+
+.LINE 356
+
+.DEFINE "regaddr"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;  357	    return *(volatile unsigned char __INTIO *)regaddr;
+.LINE 357
+
+	LD	BC,(IX+%6)
+	IN	A,(BC)
+	UEXT	HL
+	LD	L,A
+;  358	}
+.LINE 358
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** __readreg ***************************
+;Name                         Addr/Register   Size   Type
+;regaddr                               IX+6      3   parameter
+
+
+; Stack Frame Size: 9 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "_readreg",358,"__readreg"
+;  359	void _writereg(int regaddr, int d)
+;  360	{
+__writereg:
+.DEFINE "__writereg"
+
+.VALUE __writereg
+
+.CLASS 2
+
+.TYPE 65
+
+.ENDEF
+
+.BEGFUNC "_writereg",360,"__writereg"
+
+.LINE 360
+
+.DEFINE "regaddr"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 4
+
+.ENDEF
+
+.DEFINE "d"
+
+.CLASS 65
+
+.VALUE 9
+
+.TYPE 4
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;  361	    *(volatile unsigned char __INTIO *)regaddr = d;
+.LINE 361
+
+	LD	A,(IX+%9)
+	LD	BC,(IX+%6)
+	OUT	(BC),A
+;  362	}
+.LINE 362
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** __writereg ***************************
+;Name                         Addr/Register   Size   Type
+;d                                     IX+9      3   parameter
+;regaddr                               IX+6      3   parameter
+
+
+; Stack Frame Size: 12 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "_writereg",362,"__writereg"
+;  363	
+;  364	/* Get time from RTC */
+;  365	UINT8 *get_time()
+;  366	{
+_get_time:
+.DEFINE "_get_time"
+
+.VALUE _get_time
+
+.CLASS 2
+
+.TYPE 332
+
+.ENDEF
+
+.BEGFUNC "get_time",366,"_get_time"
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+;  367	    /* Snapshot the time */
+;  368	    RTC_CTRL = 0x21;
+.LINE 368
+
+	LD	A,%21
+	OUT0	(237),A
+;  369	    datetime[6] = RTC_CEN;
+.LINE 369
+
+	LD	IY,_datetime
+	LEA	HL,IY+%6
+	IN0	A,(231)
+	LD	(HL),A
+;  370	    datetime[5] = RTC_YR;
+.LINE 370
+
+	LEA	HL,IY+%5
+	IN0	A,(230)
+	LD	(HL),A
+;  371	    datetime[4] = RTC_MON;
+.LINE 371
+
+	LEA	HL,IY+%4
+	IN0	A,(229)
+	LD	(HL),A
+;  372	    datetime[3] = RTC_DOM;
+.LINE 372
+
+	LEA	HL,IY+%3
+	IN0	A,(228)
+	LD	(HL),A
+;  373	    datetime[2] = RTC_HRS;
+.LINE 373
+
+	LEA	HL,IY+%2
+	IN0	A,(226)
+	LD	(HL),A
+;  374	    datetime[1] = RTC_MIN;
+.LINE 374
+
+	LD	HL,_datetime
+	INC	HL
+	IN0	A,(225)
+	LD	(HL),A
+;  375	    datetime[0] = RTC_SEC;
+.LINE 375
+
+	IN0	A,(224)
+	LD	(_datetime),A
+;  376	    RTC_CTRL = 0x20;
+.LINE 376
+
+	LD	A,%20
+	OUT0	(237),A
+;  377	
+;  378	    return &datetime;
+.LINE 378
+
+	LD	HL,_datetime
+;  379	}
+.LINE 379
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _get_time ***************************
+;Name                         Addr/Register   Size   Type
+;_datetime                           STATIC      7   variable
+
+
+; Stack Frame Size: 6 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "get_time",379,"_get_time"
+	XREF __lcmps:ROM
+	XREF __idivs:ROM
+	XREF __ineg:ROM
+	XREF __irems:ROM
+	XREF __lshru:ROM
+	XREF __ladd_b:ROM
+	XREF __ishl_b:ROM
+	XDEF _get_time
+	XDEF __writereg
+	XDEF __readreg
+	XDEF _write_sdcard
+	XDEF _read_sdcard
+	XDEF _init_sdcard
+	XDEF __xchg_spi
+	XDEF _mode_spi
+	XDEF _init_hw
+	END

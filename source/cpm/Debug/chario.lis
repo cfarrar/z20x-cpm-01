@@ -1,0 +1,83 @@
+    1 C	//------------------------------------------------------------------------
+    2 C	// Copyright (c) 2018, Christopher D. Farrar
+    3 C	//------------------------------------------------------------------------
+    4 C	// I here grant permission to any and all to copy and use this software for
+    5 C	// any purpose as long as my copyright message is retained.
+    6 C	//----------------------------------------------------------------------------
+    7  	#include <z20x.h>
+    8 C	//----------------------------------------------------------------------------
+    9  	#include <ez80.h>
+   10  	#include <defines.h>
+   11  	#include <uart.h>
+   12 C	//------------------------------------------------------------------------
+   13  	#include <uart.h>
+   14 C	//------------------------------------------------------------------------
+   15  	#include "chario.h"
+   16 C	//------------------------------------------------------------------------
+   17 C	//This function should not of been static
+   18 C	//------------------------------------------------------------------------
+   19  	extern UCHAR FifoEmpty( FIFO *f );
+   20  	extern UCHAR g_mode_UART0;
+   21  	extern FIFO g_RxFIFO_UART0;
+   22 C	//------------------------------------------------------------------------
+   23  	static UCHAR kbhit_UART0( VOID )
+   24  	{
+   25  	    if( INTERRUPT == g_mode_UART0 )                                 //! The interrupt mode to be used.
+MacExp:     if( 1 == g_mode_UART0 )                                 //! The interrupt mode to be used.
+   26  	    {
+   27  	        if( FifoEmpty( &g_RxFIFO_UART0 ) )                          //! FIFO is empty.
+   28  	        {
+   29  	            UART0_SPR = UART_ERR_RECEIVEFIFOEMPTY ;                 //! Update SPR register.
+MacExp:             (*(volatile unsigned char __INTIO *)0xC7) = ((BYTE)0x0F) ;                 //! Update SPR register.
+   30  	
+   31  	            return 0 ;
+   32  	
+   33  	        }
+   34  	        else                                                        //! A keyboard stroke detected!
+   35  	        {
+   36  	            return 1 ;
+   37  	        }
+   38  	    }
+   39  	    else                                                            //! The polling mode to be used.
+   40  	    {
+   41  	        return ( TRUE == (UART0_LSR & UART_LSR_DATA_READY) ) ;      //! Find it reading line status register.
+MacExp:         return ( 1 == ((*(volatile unsigned char __INTIO *)0xC5) & ((unsigned char)0x01)) ) ;      //! Find it reading line status register.
+   42  	    }
+   43  	}
+   44 C	//------------------------------------------------------------------------
+   45  	UINT8 consoleCharInReady( void )
+   46  	{
+   47  	    return ( kbhit_UART0() ) ? 0xFF : 0x00;
+   48  	}
+   49 C	//------------------------------------------------------------------------
+   50  	char consoleCharIn( void )
+   51  	{
+   52  	    char c;
+   53  	    unsigned n = 1;
+   54  	    do
+   55  	    {
+   56  	        read_UART0( &c, &n );
+   57  	    }
+   58  	    while ( 0 == n );
+   59  	    return c;
+   60  	}
+   61 C	//------------------------------------------------------------------------
+   62  	UINT8 consoleCharOutReady( void )
+   63  	{
+   64  	    return 0xFF;
+   65  	}
+   66 C	//------------------------------------------------------------------------
+   67  	void consoleCharOut( char c )
+   68  	{
+   69  	    UCHAR result;
+   70  	    do
+   71  	    {
+   72  	        result = write_UART0( &c, 1 );
+   73  	    }
+   74  	    while ( result != UART_ERR_NONE );
+MacExp:     while ( result != ((BYTE)0x00) );
+   75  	}
+   76 C	//------------------------------------------------------------------------
+   77 C	
+   78 C	
+   79 C	

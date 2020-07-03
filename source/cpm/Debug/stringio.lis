@@ -1,0 +1,126 @@
+    1 C	//------------------------------------------------------------------------
+    2 C	// Copyright (c) 2018, Christopher D. Farrar
+    3 C	//------------------------------------------------------------------------
+    4 C	// I here grant permission to any and all to copy and use this software for
+    5 C	// any purpose as long as my copyright message is retained.
+    6 C	//----------------------------------------------------------------------------
+    7  	#include "ascii.h"
+    8  	#include "chario.h"
+    9  	#include "stringio.h"
+   10 C	//------------------------------------------------------------------------
+   11  	void consoleStringOut( char *stringP )
+   12  	{
+   13  	    while ( *stringP )
+   14  	    {
+   15  	        consoleCharOut( *stringP++ );
+   16  	    }
+   17  	}
+   18 C	//------------------------------------------------------------------------
+   19  	unsigned consoleStringIn( char *bufferP, unsigned size )
+   20  	{
+   21  	    char       *base;
+   22  	    char        characterBuffer;
+   23  	    unsigned    textLength;
+   24  	
+   25  	    base = bufferP;
+   26  	    textLength = 0;
+   27  	   *bufferP = '\0';
+   28  	
+   29  	    for ( ;; )
+   30  	    {
+   31 C	        // get character from serial Port
+   32  	        characterBuffer = consoleCharIn();
+   33  	
+   34 C	        // make sure 7 bit only
+   35  	        characterBuffer &= 0x7F;
+   36  	
+   37 C	        // interpret control characters in input streem
+   38  	        if ( characterBuffer < ' ' || characterBuffer == ASCII_DELETE )
+MacExp:         if ( characterBuffer < ' ' || characterBuffer == (0x7F) )
+   39  	        {
+   40  	            switch ( characterBuffer )
+   41  	            {
+   42  	
+   43  	                case ASCII_DELETE :
+MacExp:                 case (0x7F) :
+   44  	                case ASCII_BACKSPACE :
+MacExp:                 case (0x08) :
+   45  	
+   46 C	                    // delete a character from input bufferP
+   47  	                    if ( textLength != 0 )
+   48  	                    {
+   49  	                        consoleCharOut( ASCII_BACKSPACE );
+MacExp:                         consoleCharOut( (0x08) );
+   50  	                        consoleCharOut( ' ' );
+   51  	                        consoleCharOut( ASCII_BACKSPACE );
+MacExp:                         consoleCharOut( (0x08) );
+   52  	                     *--bufferP = '\0';
+   53  	                      --textLength;
+   54  	                    }
+   55  	                    else
+   56  	                    {
+   57  	                        consoleCharOut( ASCII_BELL );
+MacExp:                         consoleCharOut( (0x07) );
+   58  	                    }
+   59  	                    continue;
+   60  	
+   61  	                case ASCII_ETXCEL :
+MacExp:                 case (0x18) :
+   62  	
+   63 C	                    // delete characters from bufferP until bufferP empty
+   64  	                    while ( textLength != 0 )
+   65  	                    {
+   66  	                        consoleCharOut( ASCII_BACKSPACE );
+MacExp:                         consoleCharOut( (0x08) );
+   67  	                        consoleCharOut( ' ' );
+   68  	                        consoleCharOut( ASCII_BACKSPACE );
+MacExp:                         consoleCharOut( (0x08) );
+   69  	                     *--bufferP = '\0';
+   70  	                      --textLength;
+   71  	                    }
+   72  	                    continue;
+   73  	
+   74  	                case ASCII_ESCAPE :
+MacExp:                 case (0x1B) :
+   75  	
+   76 C	                    // cancel input and return with empty bufferP
+   77  	                   *base = '\0';
+   78  	                    return 0;
+   79  	
+   80  	                case ASCII_LINEFEED :
+MacExp:                 case (0x0A) :
+   81  	                case ASCII_ENTER :
+MacExp:                 case (0x0D) :
+   82  	
+   83 C	                    // return with input in text bufferP
+   84  	                    return textLength;
+   85  	
+   86  	                default :
+   87  	
+   88 C	                    // any other control characters get you a slap on the wrist
+   89  	                    consoleCharOut( ASCII_BELL );
+MacExp:                     consoleCharOut( (0x07) );
+   90  	                    continue;
+   91  	
+   92  	            }
+   93  	        }
+   94  	        else
+   95  	        {
+   96 C	            // if bufferP not full then put char in bufferP
+   97  	            if ( textLength < (size-1) )
+   98  	            {
+   99  	                consoleCharOut( characterBuffer );
+  100  	               *bufferP++ = characterBuffer;
+  101  	               *bufferP   = '\0';
+  102  	              ++textLength;
+  103  	            }
+  104 C	            // else slap user on wrist
+  105  	            else
+  106  	            {
+  107  	                consoleCharOut( ASCII_BELL );
+MacExp:                 consoleCharOut( (0x07) );
+  108  	            }
+  109  	        }
+  110  	    }
+  111  	}
+  112 C	//------------------------------------------------------------------------
