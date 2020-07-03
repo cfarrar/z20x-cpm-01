@@ -117,8 +117,6 @@ UINT8 readSector( void )
     return READ_RESULT_SUCCESS;
 }
 //----------------------------------------------------------------------------
-UINT8 const indexToBit[SD_LOGICAL_PER_PHYSICAL] = { 1, 2, 4, 8 };
-//----------------------------------------------------------------------------
 UINT8 writeSector( UINT8 writeType )
 {
     UINT8 index;
@@ -137,7 +135,7 @@ UINT8 writeSector( UINT8 writeType )
     index = ( sector_ & SD_SECTOR_MASK );
     offset = ( (unsigned) index ) << 7;
     memcpy( &sectorBuffer_[offset], dma_, 128 );
-    sectorMask_ |= indexToBit[index];
+    sectorMask_ |= (UINT8) ( 1U << index );
     if ( sectorMask_ == 15 ) // all logical sectors written
     {
         write_sdcard( sectorBuffer_, lba );
@@ -156,6 +154,7 @@ void initCpmDiskio( void )
     init_sdcard();
 }
 //----------------------------------------------------------------------------
+
 
 
 
