@@ -19,9 +19,6 @@
 #define SPI_MISO 6
 #define SPI_CLK 3
 
-
-
-
 /* Clear, set bits in registers */
 #define BIT( n ) ( 1 << n )
 #define CLEAR_BIT(reg, n) reg &= ~(1 << n)
@@ -42,6 +39,7 @@ typedef struct sdcmd {
     UINT32 arg;
     char crc;
 } SDCMD;
+
 static SDCMD cmd0 = { 0x40, 0, 0x95 };
 static SDCMD cmd8 = { 0x48, 0x1AA, 0x87 };
 static SDCMD cmd12 = { 0x4c, 0, 0x87 };
@@ -105,7 +103,6 @@ void mode_spi( d )
 char _xchg_spi(char d)
 {
     int i;
-    volatile int delay;
 
     /* Write the data to exchange */
     SPI_TSR = d;
@@ -117,12 +114,6 @@ char _xchg_spi(char d)
             break;
         }
         ++i;
-    }
-
-    /* Delay, then read data */
-    delay = 0;
-    while (delay < 1) {
-        ++delay;
     }
 
     return SPI_RBR;
@@ -350,34 +341,4 @@ int write_sdcard(BYTE *buf, UINT32 n)
 
     return 0;
 }
-
-/* Read and write registers */
-int _readreg(int regaddr)
-{
-    return *(volatile unsigned char __INTIO *)regaddr;
-}
-void _writereg(int regaddr, int d)
-{
-    *(volatile unsigned char __INTIO *)regaddr = d;
-}
-
-/* Get time from RTC */
-UINT8 *get_time()
-{
-    /* Snapshot the time */
-    RTC_CTRL = 0x21;
-    datetime[6] = RTC_CEN;
-    datetime[5] = RTC_YR;
-    datetime[4] = RTC_MON;
-    datetime[3] = RTC_DOM;
-    datetime[2] = RTC_HRS;
-    datetime[1] = RTC_MIN;
-    datetime[0] = RTC_SEC;
-    RTC_CTRL = 0x20;
-
-    return &datetime;
-}
-
-
-
 
