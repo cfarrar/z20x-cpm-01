@@ -8,8 +8,6 @@
 #include <defines.h>
 #include <string.h>
 //----------------------------------------------------------------------------
-#include "diskio.h"
-//----------------------------------------------------------------------------
 #include "cpmdiskio.h"
 #include "cpmtable.h"
 #include "disks.h"
@@ -136,7 +134,7 @@ UINT8 writeSector( UINT8 writeType )
     offset = ( (unsigned) index ) << 7;
     memcpy( &sectorBuffer_[offset], dma_, 128 );
     sectorMask_ |= (UINT8) ( 1U << index );
-    if ( sectorMask_ == 15 ) // all logical sectors written
+    if ( sectorMask_ == SD_ALL_LOGICAL_SECTORS )
     {
         write_sdcard( sectorBuffer_, lba );
         sectorMask_ = 0;
@@ -154,6 +152,8 @@ void initCpmDiskio( void )
     init_sdcard();
 }
 //----------------------------------------------------------------------------
+
+
 
 
 

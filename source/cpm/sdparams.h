@@ -75,9 +75,11 @@
 #define SD_LOGICAL_PER_PHYSICAL (SD_PHYSICAL_SECTOR_SIZE/LOGICAL_SECTOR_SIZE)
 #define SD_SECTOR_MASK          (3)       // L_P_P - 1 for masking off sector bits
 #define SD_SECTOR_SHIFT         (2)       // for / L_P_P
+#define SD_ALL_LOGICAL_SECTORS  ((1U<<SD_LOGICAL_PER_PHYSICAL)-1)
 //----------------------------------------------------------------------------
 #endif // SDPARAMS_H
 //----------------------------------------------------------------------------
+
 
 
 
