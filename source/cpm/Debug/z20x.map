@@ -4,7 +4,7 @@ Copyright (C) 1999-2008 Zilog, Inc. All Rights Reserved
 
 LINK MAP:
 
-DATE:      Fri Jul 10 16:25:53 2020
+DATE:      Sat Jul 11 20:49:51 2020
 PROCESSOR: assembler
 FILES:     C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\zilog\vectors16.obj
            C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\zilog\init_params_f92.obj
@@ -89,15 +89,15 @@ DEFINE __copy_code_to_ram = 0
 DEFINE __crtl = 1
 DEFINE __CS0_LBR_INIT_PARAM = $40
 DEFINE __CS0_UBR_INIT_PARAM = $47
-DEFINE __CS0_CTL_INIT_PARAM = $28
+DEFINE __CS0_CTL_INIT_PARAM = $08
 DEFINE __CS0_BMC_INIT_PARAM = $00
 DEFINE __CS1_LBR_INIT_PARAM = $01
 DEFINE __CS1_UBR_INIT_PARAM = $01
-DEFINE __CS1_CTL_INIT_PARAM = $38
+DEFINE __CS1_CTL_INIT_PARAM = $18
 DEFINE __CS1_BMC_INIT_PARAM = $00
 DEFINE __CS2_LBR_INIT_PARAM = $02
 DEFINE __CS2_UBR_INIT_PARAM = $02
-DEFINE __CS2_CTL_INIT_PARAM = $38
+DEFINE __CS2_CTL_INIT_PARAM = $18
 DEFINE __CS2_BMC_INIT_PARAM = $00
 DEFINE __CS3_LBR_INIT_PARAM = $ff
 DEFINE __CS3_UBR_INIT_PARAM = $ff
@@ -151,7 +151,7 @@ TEXT               normal data            C:00006B    C:0000A9       3fh
 SEGMENTS WITHIN MODULES:
 ========================
 
-Module: ..\..\z20x\sdcard.c (File: sdcard.obj) Version: 1:0 07/10/2020 16:25:51
+Module: ..\..\z20x\sdcard.c (File: sdcard.obj) Version: 1:0 07/11/2020 20:49:48
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -160,28 +160,28 @@ Module: ..\..\z20x\sdcard.c (File: sdcard.obj) Version: 1:0 07/10/2020 16:25:51
     Segment: DATA                              D:400003    D:40003E       3ch
 
 
-Module: ..\chario.c (File: chario.obj) Version: 1:0 07/10/2020 16:25:51
+Module: ..\chario.c (File: chario.obj) Version: 1:0 07/11/2020 20:49:49
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
     Segment: CODE                              C:000BBE    C:000C91       d4h
 
 
-Module: ..\cpmchario.c (File: cpmchario.obj) Version: 1:0 07/10/2020 16:25:52
+Module: ..\cpmchario.c (File: cpmchario.obj) Version: 1:0 07/11/2020 20:49:49
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
     Segment: CODE                              C:000C92    C:000DE7      156h
 
 
-Module: ..\cpmdiskio.c (File: cpmdiskio.obj) Version: 1:0 07/10/2020 16:25:52
+Module: ..\cpmdiskio.c (File: cpmdiskio.obj) Version: 1:0 07/11/2020 20:49:49
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
     Segment: CODE                              C:000DE8    C:000F1D      136h
 
 
-Module: ..\cpmdispatch.c (File: cpmdispatch.obj) Version: 1:0 07/10/2020 16:25:52
+Module: ..\cpmdispatch.c (File: cpmdispatch.obj) Version: 1:0 07/11/2020 20:49:49
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -189,7 +189,7 @@ Module: ..\cpmdispatch.c (File: cpmdispatch.obj) Version: 1:0 07/10/2020 16:25:5
     Segment: TEXT                              C:00006B    C:0000A9       3fh
 
 
-Module: ..\cpmload.c (File: cpmload.obj) Version: 1:0 07/10/2020 16:25:53
+Module: ..\cpmload.c (File: cpmload.obj) Version: 1:0 07/11/2020 20:49:51
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -198,7 +198,7 @@ Module: ..\cpmload.c (File: cpmload.obj) Version: 1:0 07/10/2020 16:25:53
     Segment: DATA                              D:400051    D:400055        5h
 
 
-Module: ..\cpmtable.c (File: cpmtable.obj) Version: 1:0 07/10/2020 16:25:52
+Module: ..\cpmtable.c (File: cpmtable.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -206,7 +206,7 @@ Module: ..\cpmtable.c (File: cpmtable.obj) Version: 1:0 07/10/2020 16:25:52
     Segment: CODE                              C:000F47    C:0011A0      25ah
 
 
-Module: ..\disks.c (File: disks.obj) Version: 1:0 07/10/2020 16:25:52
+Module: ..\disks.c (File: disks.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -215,7 +215,7 @@ Module: ..\disks.c (File: disks.obj) Version: 1:0 07/10/2020 16:25:52
     Segment: DATA                              D:40003F    D:400043        5h
 
 
-Module: ..\main.c (File: main.obj) Version: 1:0 07/10/2020 16:25:51
+Module: ..\main.c (File: main.obj) Version: 1:0 07/11/2020 20:49:48
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -403,7 +403,7 @@ Module: ..\src\uart\common\writeuart0.c (Library: uartF92D.lib) Version: 1:0 10/
     Segment: CODE                              C:002977    C:002A1C       a6h
 
 
-Module: ..\stringio.c (File: stringio.obj) Version: 1:0 07/10/2020 16:25:53
+Module: ..\stringio.c (File: stringio.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -568,7 +568,7 @@ Module: .\rtl\common\stoiu.asm (Library: chelpD.lib) Version: 1:0 10/11/2019 10:
     Segment: CODE                              C:0018F6    C:0018FB        6h
 
 
-Module: C:\work\projects\z20x-cpm-01\source\cpm\eZ80-CPM.asm (File: eZ80-CPM.obj) Version: 1:0 07/10/2020 16:25:52
+Module: C:\work\projects\z20x-cpm-01\source\cpm\eZ80-CPM.asm (File: eZ80-CPM.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -577,14 +577,14 @@ Module: C:\work\projects\z20x-cpm-01\source\cpm\eZ80-CPM.asm (File: eZ80-CPM.obj
     Segment: $$$org0DC048A0                    C:00F200    C:00F334      135h
 
 
-Module: C:\work\projects\z20x-cpm-01\source\cpm\isrwrap.asm (File: isrwrap.obj) Version: 1:0 07/10/2020 16:25:53
+Module: C:\work\projects\z20x-cpm-01\source\cpm\isrwrap.asm (File: isrwrap.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
     Segment: CODE                              C:0014B2    C:0014C1       10h
 
 
-Module: C:\work\projects\z20x-cpm-01\source\cpm\middle.asm (File: middle.obj) Version: 1:0 07/10/2020 16:25:53
+Module: C:\work\projects\z20x-cpm-01\source\cpm\middle.asm (File: middle.obj) Version: 1:0 07/11/2020 20:49:50
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -592,7 +592,7 @@ Module: C:\work\projects\z20x-cpm-01\source\cpm\middle.asm (File: middle.obj) Ve
     Segment: DATA                              D:400044    D:400050        dh
 
 
-Module: C:\work\projects\z20x-cpm-01\source\cpm\zsldevinit.asm (File: zsldevinit.obj) Version: 1:0 07/10/2020 16:25:53
+Module: C:\work\projects\z20x-cpm-01\source\cpm\zsldevinit.asm (File: zsldevinit.obj) Version: 1:0 07/11/2020 20:49:51
 
     Name                                           Base         Top      Size
     --------------------------------------- ----------- ----------- ---------
@@ -613,15 +613,15 @@ __close_periphdevice                C:001859 zsldevinit      CODE
 __copy_code_to_ram                  00000000 (User Defined)
 __crtl                              00000001 (User Defined)
 __CS0_BMC_INIT_PARAM                00000000 (User Defined)
-__CS0_CTL_INIT_PARAM                00000028 (User Defined)
+__CS0_CTL_INIT_PARAM                00000008 (User Defined)
 __CS0_LBR_INIT_PARAM                00000040 (User Defined)
 __CS0_UBR_INIT_PARAM                00000047 (User Defined)
 __CS1_BMC_INIT_PARAM                00000000 (User Defined)
-__CS1_CTL_INIT_PARAM                00000038 (User Defined)
+__CS1_CTL_INIT_PARAM                00000018 (User Defined)
 __CS1_LBR_INIT_PARAM                00000001 (User Defined)
 __CS1_UBR_INIT_PARAM                00000001 (User Defined)
 __CS2_BMC_INIT_PARAM                00000000 (User Defined)
-__CS2_CTL_INIT_PARAM                00000038 (User Defined)
+__CS2_CTL_INIT_PARAM                00000018 (User Defined)
 __CS2_LBR_INIT_PARAM                00000002 (User Defined)
 __CS2_UBR_INIT_PARAM                00000002 (User Defined)
 __CS3_BMC_INIT_PARAM                00000000 (User Defined)
@@ -1190,8 +1190,8 @@ _zsl_g_clock_xdefine              Defined     LINKER
 
 OUTPUT CHECKSUM
 ===============
-z20x.hex             1F61FC
-z20x.lod             1F61FC
+z20x.hex             1F619C
+z20x.lod             1F619C
 
 
 
